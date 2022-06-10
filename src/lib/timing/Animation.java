@@ -9,9 +9,9 @@ public class Animation {
 
     public Animation(TimingFunction function, int duration){
         this.function = function;
-        this.duration = duration;
-        startTime = System.currentTimeMillis();
-        endTime = startTime + duration;
+        this.duration = duration*1000000;
+        startTime = System.nanoTime();
+        endTime = startTime + this.duration;
     }
 
     public Animation(int duration) {
@@ -21,7 +21,7 @@ public class Animation {
     public double getValue() {
         if (finished) return function.endsAtOne() ? 1.0 : 0.0;
 
-        long time = System.currentTimeMillis();
+        long time = System.nanoTime();
 
         if (time > endTime) {
             finished = true;

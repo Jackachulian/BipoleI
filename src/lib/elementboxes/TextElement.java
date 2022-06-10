@@ -1,17 +1,24 @@
 package lib.elementboxes;
 
 import java.awt.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 
 public class TextElement extends ElementBox {
+    public static final Font GAME_FONT_SMALL, GAME_FONT, GAME_FONT_LARGE;
+
+    static {
+        Font baseFont = new Font("monospace", Font.PLAIN, 12);
+        GAME_FONT_SMALL = baseFont.deriveFont(14f);
+        GAME_FONT = baseFont.deriveFont(18f);
+        GAME_FONT_LARGE = baseFont.deriveFont(22f);
+    }
+
     public String[] text;
     public Font font = GAME_FONT;
     public boolean wrap;
     public boolean wrapCalced;
-
-    public static final Font GAME_FONT_SMALL = new Font("monospace", Font.PLAIN, 13);
-    public static final Font GAME_FONT = new Font("monospace", Font.PLAIN, 16);
-    public static final Font GAME_FONT_BIG = new Font("monospace", Font.PLAIN, 20);
 
     public TextElement(String... text){
         super();

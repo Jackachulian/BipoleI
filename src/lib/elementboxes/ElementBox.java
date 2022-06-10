@@ -145,7 +145,6 @@ public class ElementBox {
                 totalSize += displayType.isRow
                         ? child.marginLeft + child.width + child.marginRight
                         : child.marginTop + child.height + child.marginBottom;
-                System.out.println(hashCode() + " " + totalSize);
             }
         } else {
             for (ElementBox child : children){

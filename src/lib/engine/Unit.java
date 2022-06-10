@@ -5,7 +5,7 @@ import java.awt.*;
 import java.util.ArrayList;
 
 /** A unit that can exist on top of a tile in a battle. **/
-public class Unit implements MapDrawable {
+public class Unit {
     /** The type of unit this is. **/
     private final UnitData data;
     /** The player that owns and controls this unit. **/
@@ -40,7 +40,7 @@ public class Unit implements MapDrawable {
         int delay = (int)(data.delay / speed);
         actionTimer = new Timer(delay, e -> onReady());
         actionTimer.setRepeats(autoAct);
-        actionStartTime = System.currentTimeMillis();
+        actionStartTime = System.nanoTime();
     }
 
     /** Effects to run when this unit becomes ready. **/
@@ -59,13 +59,13 @@ public class Unit implements MapDrawable {
     /** Use up this fighter's action, restarting their action timer cooldown. **/
     public void resetCooldown(){
         ready = false;
-        actionStartTime = System.currentTimeMillis();
+        actionStartTime = System.nanoTime();
         actionTimer.start();
     }
 
     /** Draw this unit on the screen. **/
-    public void draw(Graphics g, double x, double y, double z){
-        data.drawShapes(g, x, y, z, owner.color, Color.BLACK);
+    public void draw(Graphics g, double x, double y, double z, Tile tile){
+        data.drawShapes(g, x, y, z, tile.getColor(), tile.getFaceColor());
     }
 
     public boolean isReady() {

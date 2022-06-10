@@ -42,7 +42,6 @@ public class ShopElement extends ElementBox {
                 if (r*COLS + c >= shop.getItems().size()) break;
                 ShopItemElement itemElement = new ShopItemElement(shop, shop.getItem(r*COLS + c));
                 row.addChild(itemElement);
-                System.out.println(itemElement);
             }
         }
     }

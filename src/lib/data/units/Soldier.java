@@ -6,7 +6,7 @@ import lib.geometry.Shape;
 
 public class Soldier extends UnitData {
     public Soldier() {
-        super("Soldier", 3, 5, 3);
+        super("Soldier", 3, 5, 3, 10000);
         addShape(Shape.rectangularPrism(0.4, 0.4, 0.4));
     }
 }

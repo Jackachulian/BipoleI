@@ -9,7 +9,7 @@ public class GameFrame extends JFrame {
 
     public GameFrame() {
         super("Bipole I");
-        setBounds(100, 100, 960, 540);
+        setBounds(0, 0, 960, 540);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 

@@ -5,8 +5,11 @@ import lib.engine.Battle;
 import lib.engine.Player;
 
 import java.awt.*;
+import java.io.File;
+import java.io.IOException;
 
-public class RunLocalBattle {
+public class BipoleI {
+
     public static void main(String[] args) {
         GameFrame frame = new GameFrame();
         Player player = new Player(new Color(72, 132, 234));
@@ -22,6 +25,8 @@ public class RunLocalBattle {
         battle.claim(enemy, 0, 6);
         battle.claimAndPlaceUnit(enemy, Units.FARMER, 1, 7);
         battle.claimAndPlaceUnit(enemy, Units.SOLDIER, 1, 6);
+
+        player.addPoints(5);
 
         frame.loadBattle(battle, player);
     }

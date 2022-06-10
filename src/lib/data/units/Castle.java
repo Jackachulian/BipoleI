@@ -5,7 +5,7 @@ import lib.geometry.Shape;
 
 public class Castle extends UnitData {
     public Castle() {
-        super("Castle",500, 25, 0);
+        super("Castle",500, 25, 0, 10000);
 
         final double
                 SIZE = 0.7,

@@ -1,6 +1,7 @@
 package lib.elementboxes;
 
 import lib.engine.Buyable;
+import lib.engine.Player;
 import lib.engine.Shop;
 import lib.geometry.Shape;
 
@@ -24,7 +25,7 @@ public class ShopItemElement extends ElementBox {
         setPadding(PADDING);
         setBorder(true);
 
-        TextElement costText = new TextElement(item.buyCost()+" pts");
+        TextElement costText = new TextElement(item.buyCost()+"");
         costText.font = TextElement.GAME_FONT_SMALL;
         costText.height = costText.font.getSize();
         costText.alignBottom = true;
@@ -36,13 +37,15 @@ public class ShopItemElement extends ElementBox {
     public void draw(Graphics g) {
         super.draw(g);
 
+        Player player = shop.getPlayer();
+        boolean canBuy = player.canBuy(item);
         for (Shape shape : item.getShapes()){
             shape.draw(g,
                     x + width/2,
                     y + height/2,
                     WIDTH*0.8,
-                    shop.getPlayer().canBuy(item) ? shop.getPlayer().color : Color.GRAY,
-                    Color.BLACK);
+                    canBuy ? player.color : Color.GRAY,
+                    canBuy ? player.faceColor : Color.BLACK);
         }
     }
 }

@@ -18,11 +18,11 @@ public abstract class UnitData implements Buyable {
     public final int hp;
     /** Base ATK of this unit. **/
     public final int atk;
-    /** Amount of delay (in milliseconds) before this unit can act. **/
+    /** Amount of delay (*in milliseconds*) before this unit can act. **/
     public final int delay;
 
     /** All actions that this type of unit can use as their action. **/
-    private ArrayList<Action> actions;
+    private final ArrayList<Action> actions;
 
     /** All shapes to draw when drawing this unit. **/
     private final List<Shape> shapes;

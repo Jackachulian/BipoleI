@@ -1,6 +1,6 @@
 package lib.geometry;
 
-import lib.GamePanel;
+import lib.GuiConstants;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -39,8 +39,8 @@ public class Shape {
             int[] xPoints = new int[face.vertices.length];
             int[] yPoints = new int[face.vertices.length];
             for (int i=0; i<face.vertices.length; i++){
-                xPoints[i] = (int)(x + z*(face.vertices[i].x*GamePanel.ROW_X_OFFSET + face.vertices[i].y*GamePanel.COL_X_OFFSET));
-                yPoints[i] = (int)(y + z*(face.vertices[i].x*GamePanel.ROW_Y_OFFSET + face.vertices[i].y*GamePanel.COL_Y_OFFSET + face.vertices[i].z*GamePanel.HEIGHT_Y_OFFSET));
+                xPoints[i] = (int)(x + z*(face.vertices[i].x* GuiConstants.ROW_X_OFFSET + face.vertices[i].y* GuiConstants.COL_X_OFFSET));
+                yPoints[i] = (int)(y + z*(face.vertices[i].x* GuiConstants.ROW_Y_OFFSET + face.vertices[i].y* GuiConstants.COL_Y_OFFSET + face.vertices[i].z* GuiConstants.HEIGHT_Y_OFFSET));
             }
             g.fillPolygon(xPoints, yPoints, face.vertices.length);
         }
@@ -62,10 +62,10 @@ public class Shape {
     private void drawSegments(Graphics g, double x, double y, double z, List<Segment> segments){
         for (Segment segment : segments){
             g.drawLine(
-                    (int)(x + z*(segment.start.x*GamePanel.ROW_X_OFFSET + segment.start.y*GamePanel.COL_X_OFFSET)),
-                    (int)(y + z*(segment.start.x*GamePanel.ROW_Y_OFFSET + segment.start.y*GamePanel.COL_Y_OFFSET + segment.start.z*GamePanel.HEIGHT_Y_OFFSET)),
-                    (int)(x + z*(segment.end.x*GamePanel.ROW_X_OFFSET + segment.end.y*GamePanel.COL_X_OFFSET)),
-                    (int)(y + z*(segment.end.x*GamePanel.ROW_Y_OFFSET + segment.end.y*GamePanel.COL_Y_OFFSET + segment.end.z*GamePanel.HEIGHT_Y_OFFSET))
+                    (int)(x + z*(segment.start.x* GuiConstants.ROW_X_OFFSET + segment.start.y* GuiConstants.COL_X_OFFSET)),
+                    (int)(y + z*(segment.start.x* GuiConstants.ROW_Y_OFFSET + segment.start.y* GuiConstants.COL_Y_OFFSET + segment.start.z* GuiConstants.HEIGHT_Y_OFFSET)),
+                    (int)(x + z*(segment.end.x* GuiConstants.ROW_X_OFFSET + segment.end.y* GuiConstants.COL_X_OFFSET)),
+                    (int)(y + z*(segment.end.x* GuiConstants.ROW_Y_OFFSET + segment.end.y* GuiConstants.COL_Y_OFFSET + segment.end.z* GuiConstants.HEIGHT_Y_OFFSET))
             );
         }
     }
