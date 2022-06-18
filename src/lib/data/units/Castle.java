@@ -1,11 +1,14 @@
 package lib.data.units;
 
+import lib.data.actions.GeneratePoint;
 import lib.engine.UnitData;
 import lib.geometry.Shape;
 
 public class Castle extends UnitData {
     public Castle() {
-        super("Castle",500, 25, 0, 10000);
+        super("Castle",500, 25, 0, 5000);
+        setMustAutoAct(true);
+        addAction(new GeneratePoint("Mine", 1));
 
         final double
                 SIZE = 0.7,

@@ -1,5 +1,6 @@
 package lib.engine;
 
+import lib.geometry.Mesh;
 import lib.geometry.Shape;
 
 import java.awt.*;
@@ -21,11 +22,16 @@ public abstract class UnitData implements Buyable {
     /** Amount of delay (*in milliseconds*) before this unit can act. **/
     public final int delay;
 
+    /** If this type of unit must automatically act when ready (farmers, etc). **/
+    private boolean mustAutoAct;
+    /** If this type of unit auto acts by default when placed. **/
+    private boolean defaultAutoAct;
+
     /** All actions that this type of unit can use as their action. **/
     private final ArrayList<Action> actions;
 
-    /** All shapes to draw when drawing this unit. **/
-    private final List<Shape> shapes;
+    /** The mesh of shapes to draw when drawing this unit. **/
+    private final Mesh mesh;
 
     public UnitData(String name, int value, int hp, int atk, int delay) {
         this.name = name;
@@ -34,19 +40,17 @@ public abstract class UnitData implements Buyable {
         this.atk = atk;
         this.delay = delay;
         this.actions = new ArrayList<>();
-        this.shapes = new ArrayList<>();
+        this.mesh = new Mesh();
     }
 
     /** Add a shape to be drawn for this type of unit. **/
     public void addShape(Shape shape){
-        shapes.add(shape);
+        mesh.add(shape);
     }
 
-    /** Draw all shapes for this unit type. **/
-    public void drawShapes(Graphics g, double x, double y, double z, Color segmentColor, Color lineColor){
-        for (Shape shape : shapes){
-            shape.draw(g, x, y, z, segmentColor, lineColor);
-        }
+    /** Add an action that this type of unit can use. **/
+    public void addAction(Action action) {
+        actions.add(action);
     }
 
     @Override
@@ -60,7 +64,28 @@ public abstract class UnitData implements Buyable {
     }
 
     @Override
-    public List<Shape> getShapes() {
-        return shapes;
+    public Mesh getMesh() {
+        return mesh;
+    }
+
+    public boolean isMustAutoAct() {
+        return mustAutoAct;
+    }
+
+    public void setMustAutoAct(boolean mustAutoAct) {
+        this.mustAutoAct = mustAutoAct;
+        if (mustAutoAct) this.defaultAutoAct = true;
+    }
+
+    public ArrayList<Action> getActions() {
+        return actions;
+    }
+
+    public boolean isDefaultAutoAct() {
+        return defaultAutoAct;
+    }
+
+    public void setDefaultAutoAct(boolean defaultAutoAct) {
+        this.defaultAutoAct = defaultAutoAct;
     }
 }

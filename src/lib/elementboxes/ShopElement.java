@@ -17,7 +17,7 @@ public class ShopElement extends ElementBox {
     public ShopElement(Shop shop) {
         this.shop = shop;
         fillY = true;
-        width = WIDTH;
+        rect.width = WIDTH;
         alignRight = true;
         setPadding(PADDING);
         padTop = TOP_PADDING;
@@ -35,7 +35,7 @@ public class ShopElement extends ElementBox {
             ElementBox row = new ElementBox();
             addChild(row);
             row.displayType = DisplayType.ROW;
-            row.height = ShopItemElement.HEIGHT + 2*ShopItemElement.MARGIN;
+            row.rect.height = ShopItemElement.HEIGHT + 2*ShopItemElement.MARGIN;
             row.fillX = true;
             row.setBorder(false);
             for (int c=0; c<COLS; c++){

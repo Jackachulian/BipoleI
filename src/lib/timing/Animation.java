@@ -35,4 +35,8 @@ public class Animation {
     public boolean isFinished() {
         return finished;
     }
+
+    public int getDuration() {
+        return duration;
+    }
 }

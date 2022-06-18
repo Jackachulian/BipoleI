@@ -1,5 +1,6 @@
 package lib.geometry;
 
+import lib.DrawUtils;
 import lib.GuiConstants;
 
 import java.awt.*;
@@ -27,47 +28,78 @@ public class Shape {
 
     /** Draw this shape at the given coordinates with the given color.
      * @param g the Graphics instance to draw with
-     * @param x X position of top corner of tile (northwestern corner)
-     * @param y Y position of top corner of tile (northwestern corner)
+     * @param polygon the Polygon of the tile's base with points [NW, SW, SE, NE].
      * @param segmentColor The color to draw segments on this shape.
      * @param faceColor The color to draw faces on this shape.
      */
-    public void draw(Graphics g, double x, double y, double z, Color segmentColor, Color faceColor){
+    public void draw(Graphics g, Polygon polygon, Color segmentColor, Color faceColor){
+        // Initialize points array
+        Point[] points = new Point[polygon.npoints];
+        for (int i=0; i<points.length; i++){
+            points[i] = new Point(polygon.xpoints[i], polygon.ypoints[i]);
+        }
+
         // 1. draw faces
         g.setColor(faceColor);
         for (Face face : faces){
-            int[] xPoints = new int[face.vertices.length];
-            int[] yPoints = new int[face.vertices.length];
-            for (int i=0; i<face.vertices.length; i++){
-                xPoints[i] = (int)(x + z*(face.vertices[i].x* GuiConstants.ROW_X_OFFSET + face.vertices[i].y* GuiConstants.COL_X_OFFSET));
-                yPoints[i] = (int)(y + z*(face.vertices[i].x* GuiConstants.ROW_Y_OFFSET + face.vertices[i].y* GuiConstants.COL_Y_OFFSET + face.vertices[i].z* GuiConstants.HEIGHT_Y_OFFSET));
+            Polygon facePolygon = new Polygon();
+            for (Vertex v : face.vertices) {
+                Point pos = vertPos(points, v);
+                facePolygon.addPoint(pos.x, pos.y);
             }
-            g.fillPolygon(xPoints, yPoints, face.vertices.length);
+            g.fillPolygon(facePolygon);
         }
 
         // 2. draw normal segments
         g.setColor(segmentColor);
-        drawSegments(g, x, y, z, segments);
+        drawSegments(g, points, segments);
 
         // 3. draw culled segments
         g.setColor(faceColor);
-        drawSegments(g, x, y, z, culledSegments);
+        drawSegments(g, points, culledSegments);
 
         // 3. draw child shapes
         for (Shape shape : children){
-            shape.draw(g, x, y, z, segmentColor, faceColor);
+            shape.draw(g, polygon, segmentColor, faceColor);
         }
     }
 
-    private void drawSegments(Graphics g, double x, double y, double z, List<Segment> segments){
+    private void drawSegments(Graphics g, Point[] points, List<Segment> segments){
+        //NW, NE, SE, SW
         for (Segment segment : segments){
-            g.drawLine(
-                    (int)(x + z*(segment.start.x* GuiConstants.ROW_X_OFFSET + segment.start.y* GuiConstants.COL_X_OFFSET)),
-                    (int)(y + z*(segment.start.x* GuiConstants.ROW_Y_OFFSET + segment.start.y* GuiConstants.COL_Y_OFFSET + segment.start.z* GuiConstants.HEIGHT_Y_OFFSET)),
-                    (int)(x + z*(segment.end.x* GuiConstants.ROW_X_OFFSET + segment.end.y* GuiConstants.COL_X_OFFSET)),
-                    (int)(y + z*(segment.end.x* GuiConstants.ROW_Y_OFFSET + segment.end.y* GuiConstants.COL_Y_OFFSET + segment.end.z* GuiConstants.HEIGHT_Y_OFFSET))
-            );
+            Point start = vertPos(points, segment.start);
+            Point end = vertPos(points, segment.end);
+            g.drawLine(start.x, start.y, end.x, end.y);
         }
+    }
+
+    /** Get the screen position of a vertex based on its base tile's polygon's points. **/
+    private Point vertPos(Point[] points, Vertex vertex) {
+        Point nw = points[0], sw = points[1], se = points[2], ne = points[3];
+
+        // Get the point on the base
+        Point wr = DrawUtils.lerp(nw, sw, vertex.x+0.5);
+        Point er = DrawUtils.lerp(ne, se, vertex.x+0.5);
+        Point p = DrawUtils.lerp(wr, er, vertex.y+0.5);
+
+        // If height is greater than 0, calculate the slopes to determine which way x&y are angled
+        if (vertex.z > 0) {
+            // Calculate slope offset ratios between row/column offsets and polygon row/column offsets (with respect to height)
+            double
+                    rdx = ne.x-nw.x,
+                    rdy = ne.y-nw.y,
+                    cdx = sw.x-nw.x,
+                    cdy = sw.y-nw.y;
+
+            double rowHeightSlope = rdy/rdx - GuiConstants.ROW_SLOPE - 1;
+            double colHeightSlope = cdy/cdx - GuiConstants.COL_SLOPE + 1;
+//            double heightMult = 1 - (rowHeightSlope*rowHeightSlope - colHeightSlope*colHeightSlope);
+            double height = (int)(cdx * (GuiConstants.HEIGHT_Y_OFFSET/GuiConstants.COL_X_OFFSET) * -vertex.z);
+
+            p.translate((int)(-height*(rowHeightSlope + colHeightSlope)), (int)height);
+        }
+
+        return p;
     }
 
     public void addFace(Face face){
@@ -92,8 +124,26 @@ public class Shape {
         children.add(child);
     }
 
-    // ==== Static methods for generating shapes
+    // ==== Static method for creating a tile-shaped polygon (used for shop, nearly identical code can be found in tile's draw
+    /** Create a polygon at the given screen coordinates. The northwestern corner of the tile will be located at the passed coordinates. **/
+    public static Polygon tilePolygon(int x, int y, double z) {
+        int
+                nex = (int)(x + z* GuiConstants.ROW_X_OFFSET),
+                swx = (int)(x + z* GuiConstants.COL_X_OFFSET),
+                sex = (int)(x + z*(GuiConstants.ROW_X_OFFSET + GuiConstants.COL_X_OFFSET)), // ayo???
+                ney = (int)(y + z * (GuiConstants.ROW_Y_OFFSET)),
+                swy = (int)(y + z * GuiConstants.COL_Y_OFFSET),
+                sey = (int)(y + z*(GuiConstants.ROW_Y_OFFSET + GuiConstants.COL_Y_OFFSET));
 
+        Polygon polygon = new Polygon();
+        polygon.addPoint(x, y);
+        polygon.addPoint(nex, ney);
+        polygon.addPoint(sex, sey);
+        polygon.addPoint(swx, swy);
+        return polygon;
+    }
+
+    // ==== Static methods for generating shapes
     /** Make a new rectangular prism
      * @param x x position of the center of the bottom face
      * @param y y position of the center of the bottom face

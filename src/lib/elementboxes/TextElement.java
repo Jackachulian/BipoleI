@@ -34,7 +34,7 @@ public class TextElement extends ElementBox {
         super.draw(g);
         if (text.length == 0) return;
         if (wrap && !wrapCalced) calcWrapText(g);
-        g.setColor(color);
+        g.setColor(isFocused() ? color : colorFaded);
         g.setFont(font);
 
         FontMetrics metrics = g.getFontMetrics(font);
@@ -42,8 +42,8 @@ public class TextElement extends ElementBox {
         for (int i=0; i<text.length; i++){
             String line = text[i];
 
-            int strX = x + (width - metrics.stringWidth(line)) / 2;
-            int strY = y + (height - lineHeight*(text.length-1-i)*2 + metrics.getAscent()) / 2;
+            int strX = rect.x + (rect.width - metrics.stringWidth(line)) / 2;
+            int strY = rect.y + (rect.height - lineHeight*(text.length-1-i)*2 + metrics.getAscent()) / 2;
 
             g.drawString(line, strX, strY);
         }
@@ -69,7 +69,7 @@ public class TextElement extends ElementBox {
         int lineWidth = 0;
         for (String word : words) {
             int wordWidth = metrics.stringWidth(word);
-            if (lineWidth + wordWidth > width) {
+            if (lineWidth + wordWidth > rect.width) {
                 lines.add(line.toString());
                 line = new StringBuilder();
                 lineWidth = 0;
@@ -83,8 +83,8 @@ public class TextElement extends ElementBox {
         lines.add(line.toString());
         text = lines.toArray(new String[0]);
 
-        if (text.length * metrics.getAscent() > height){
-            height = text.length * metrics.getAscent();
+        if (text.length * metrics.getAscent() > rect.height){
+            rect.height = text.length * metrics.getAscent();
             resizeNeeded = true;
         }
 

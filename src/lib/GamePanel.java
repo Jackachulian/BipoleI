@@ -11,11 +11,10 @@ import lib.engine.Tile;
 import lib.timing.AnimatedValue;
 
 import javax.swing.*;
-import javax.swing.event.MouseInputListener;
 import java.awt.*;
 import java.awt.event.*;
 
-public class GamePanel extends ElementPanel implements MouseInputListener, MouseMotionListener, MouseWheelListener {
+public class GamePanel extends ElementPanel {
     // ======== FIELDS
     /** The battle displayed on this panel. **/
     protected Battle battle;
@@ -23,12 +22,10 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
     protected Player player;
 
     // ==== CAMERA
-    /** Row position of camera. **/
-    protected Number cameraRow = 0;
-    /** Col position of camera. **/
-    protected Number cameraCol = 0;
-    /** Depth position of camera. **/
-    protected Number cameraDepth = 0;
+    /** X position of camera. (Relative to northwestern corner of map) **/
+    protected Number cameraX = 0;
+    /** Y position of camera. (Relative to northwestern corner of map) **/
+    protected Number cameraY = 0;
     /** Current zoom of camera. **/
     protected double zoom = 50.0;
 
@@ -37,12 +34,16 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
     protected int cursorRow;
     /** Internal col position of cursor. **/
     protected int cursorCol;
-    /** Internal depth position of cursor. **/
-    protected int cursorDepth;
+    /** The row and column of the tile the cursor is moving from. Used in displaying. **/
+    protected int fromCursorRow, fromCursorCol;
     /** Displayed row position of cursor. **/
     protected Number showCursorRow = 0;
     /** Displayed col position of cursor. **/
     protected Number showCursorCol = 0;
+    /** Animator for cursor (row only), the isAnimating is checked for this if cursor ease is on. **/
+    protected AnimatedValue cursorAnimator = new AnimatedValue(0);
+    /** Displayed corner heights of the cursor. **/
+    protected final NumberCorners cursorCorners = new NumberCorners();
 
     /** Elementbox that controls the shop menu. **/
     ElementBox shop;
@@ -51,6 +52,9 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
 
     // ======== CONSTRUCTOR
     public GamePanel(Battle battle, Player player) {
+        super(new ElementBox(){
+
+        });
         this.battle = battle;
         this.player = player;
         setBackground(new Color(64,64,64));
@@ -66,7 +70,8 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
         addElement(shop);
         pointCounter = new PointCounterElement();
         addElement(pointCounter);
-        resizeElements();
+
+        resizeElements();   // Sets the size of all elements to where they need to be
 
         // Mouse listener setup
         super.addMouseListener(this);
@@ -80,6 +85,7 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
         super.getInputMap().put(KeyStroke.getKeyStroke("RIGHT"), "south");
 
         super.getInputMap().put(KeyStroke.getKeyStroke("Z"), "interact");
+        super.getInputMap().put(KeyStroke.getKeyStroke("X"), "cancel");
 
 
         // Action mapping
@@ -89,6 +95,7 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
         super.getActionMap().put("south", new CursorMove(0,1));
 
         super.getActionMap().put("interact", new CursorInteract());
+        super.getActionMap().put("cancel", new CursorCancel());
     }
 
     // ==== KEY LISTENERS
@@ -102,17 +109,29 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            moveCursor(row, col);
+            if (rootSelected()) {
+                moveCursor(row, col);
+            }
         }
     }
 
     public class CursorInteract extends AbstractAction {
         @Override
         public void actionPerformed(ActionEvent e) {
-            interact(cursorRow, cursorCol);
+            if (rootSelected()) {
+                mapInteract(cursorRow, cursorCol);
+            } else {
+
+            }
         }
     }
 
+    public class CursorCancel extends AbstractAction {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            onCancel();
+        }
+    }
 
     // ======== METHODS
     // ==== MAIN DRAW
@@ -120,34 +139,63 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        // Draw all tiles' bases
+        // Draw all tiles' bases and unit meshes
         Tile[][] map = battle.getMap();
         for (int r=0; r<map.length; r++){
             for (int c=0; c<map[r].length; c++){
                 map[r][c].drawBase(g, getScreenPos(r, c), zoom);
 
-                map[r][c].draw(g, getScreenPos(r+0.5, c+0.5), zoom);
+                // Draw cursor if under this tile or the target tile
+                if ((r == cursorRow && c == cursorCol) ||
+                        (GuiConstants.EASE_CURSOR && cursorAnimator.isRunning() && r == Math.max(cursorRow, fromCursorRow) && c == Math.max(cursorCol, fromCursorCol))) {
+                    g.setColor(Color.GREEN);
+                    DrawUtils.drawInsetTile(g, getScreenPos(showCursorRow.doubleValue(), showCursorCol.doubleValue()), zoom, cursorCorners, 0.1);
+                }
+
+                map[r][c].draw(g);
             }
         }
 
-        // Draw the cursor
-        g.setColor(Color.GREEN);
-        DrawUtils.drawInsetTile(g, getScreenPos(showCursorRow.doubleValue(), showCursorCol.doubleValue()), zoom, 0.1);
+        // Draw all units' UI, even if it would be obscured by a tile in front of it
+        for (Tile[] tiles : map) {
+            for (Tile tile : tiles) {
+                tile.drawUI(g, zoom);
+            }
+        }
 
         // Update and draw screen elements
         pointCounter.setText(player.getPoints()+" pts");
         drawElements(g);
     }
 
+//    package lib.engine;
+//
+//import java.awt.*;
+//
+//    /** Anything that can be drawn with a Graphics object g at (x, y) with z zoom. **/
+//    public interface MapDrawable {
+//        /**
+//         * Draw this object at the given location with the passed graphics object.
+//         * @param g the Graphics instance
+//         * @param x X position of top corner of tile (northwestern corner)
+//         * @param y Y position of top corner of tile (northwestern corner)
+//         * @param z Amount of zoom to draw with (Zoom is equal to the amount of pixels from the top to bottom corner)
+//         */
+//        void draw(Graphics g, double x, double y, double z);
+//
+//        default void draw(Graphics g, Point pos, double z){
+//            draw(g, pos.x, pos.y, z);
+//        }
+//    }
+
+
     // ==== POSITIONING
     /** Get the screen position of a coordinate on the map by row&column&depth and height. **/
     public Point getScreenPos(double row, double col, double depth, double height){
-        double relRow = row - cameraRow.doubleValue();
-        double relCol = col - cameraCol.doubleValue();
-        double relDepth = depth = cameraDepth.doubleValue();
-
-        double x = zoom*(relRow*GuiConstants.ROW_X_OFFSET + relCol*GuiConstants.COL_X_OFFSET) + getWidth()/2.0;
-        double y = zoom*(relRow*GuiConstants.ROW_Y_OFFSET + relCol*GuiConstants.COL_Y_OFFSET + relDepth*GuiConstants.DEPTH_Y_OFFSET + height*GuiConstants.HEIGHT_Y_OFFSET) + getHeight()/2.0;
+        double x = zoom*(row*GuiConstants.ROW_X_OFFSET + col*GuiConstants.COL_X_OFFSET)
+                + getWidth()/2.0 - cameraX.doubleValue();
+        double y = zoom*(row*GuiConstants.ROW_Y_OFFSET + col*GuiConstants.COL_Y_OFFSET - depth*GuiConstants.DEPTH_Y_OFFSET + height*GuiConstants.HEIGHT_Y_OFFSET)
+                + getHeight()/2.0 - cameraY.doubleValue();
 
         return new Point((int)x, (int)y);
     }
@@ -162,38 +210,51 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
         return getScreenPos(row, col, 0);
     }
 
-    /** Get the grid's row and column position of a given X and Y screen coordinate. **/
-    public GridPoint getGridPos(int x, int y){
-        double relX = (x - super.getWidth()/2.0) / zoom;
-        double relY = (y - super.getHeight()/2.0) / zoom;
-
-        double row = (relX/GuiConstants.ROW_X_OFFSET + relY/ GuiConstants.ROW_Y_OFFSET)/2 + cameraRow.doubleValue();
-        double col = (relX/GuiConstants.COL_X_OFFSET + relY/ GuiConstants.COL_Y_OFFSET)/2 + cameraCol.doubleValue();
-
-        return new GridPoint(row, col);
+    /** Get the grid's row and column position of a given X and Y screen coordinate.
+     * Checks each tile's polygon to see if the mouse tile is contained by the polygon.
+     * @return the position of the tile; null if no tile was clicked **/
+    public Point getGridPos(int x, int y){
+        // Iterate over the map in reverse order, so tiles covered up by other tiles aren't selected in place of the one that is actually clicked on the screen.
+        // A tile located before another tile in row-major order will never overlap it
+        for (int r = battle.numRows()-1; r >= 0; r--) {
+            for (int c = battle.numCols()-1; c >= 0; c--) {
+                if (battle.getTile(r, c).containsPoint(x, y)) {
+                    return new Point(r, c);
+                }
+            }
+        }
+        return null;
     }
 
     // ==== MOUSE LISTENERS
     /** The last point the screen was clicked. **/
     private Point clickPoint;
-    /** The grid position of the camera when the screen was clicked. **/
-    private double clickCameraRow, clickCameraCol;
+    /** The X and Y position of the camera when the screen was clicked. **/
+    private double clickCameraX, clickCameraY;
+
     @Override
     public void mouseClicked(MouseEvent e) {
-        GridPoint clickGridPos = getGridPos(e.getX(), e.getY());
-        setCursor((int)clickGridPos.row, (int)clickGridPos.col);
+        super.mouseClicked(e);
+        if (rootSelected()) {
+            Point clickGridPos = getGridPos(e.getX(), e.getY());
+            if (clickGridPos == null) return;
+            setCursor(clickGridPos.x, clickGridPos.y);
+        }
     }
 
     @Override
     public void mousePressed(MouseEvent e) {
-        clickPoint = e.getPoint();
-        clickCameraRow = cameraRow.doubleValue();
-        clickCameraCol = cameraCol.doubleValue();
+        super.mousePressed(e);
+        if (rootSelected()) {
+            clickPoint = e.getPoint();
+            clickCameraX = cameraX.doubleValue();
+            clickCameraY = cameraY.doubleValue();
+        }
     }
 
     @Override
     public void mouseReleased(MouseEvent e) {
-
+        super.mouseReleased(e);
     }
 
     @Override
@@ -208,29 +269,27 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
 
     @Override
     public void mouseDragged(MouseEvent e) {
-        int dx = e.getX() - clickPoint.x;
-        int dy = e.getY() - clickPoint.y;
-        cameraRow = clickCameraRow - (dx/GuiConstants.ROW_X_OFFSET + dy/GuiConstants.ROW_Y_OFFSET) / 2 / zoom;
-        cameraCol = clickCameraCol - (dx/GuiConstants.COL_X_OFFSET + dy/GuiConstants.COL_Y_OFFSET) / 2 / zoom;
-    }
-
-    @Override
-    public void mouseMoved(MouseEvent e) {
-
+        if (rootPressed()) {
+            int dx = e.getX() - clickPoint.x;
+            int dy = e.getY() - clickPoint.y;
+            cameraX = clickCameraX - dx;
+            cameraY = clickCameraY - dy;
+        }
     }
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
         double scale = Math.pow(GuiConstants.ZOOM_SCROLL_FACTOR, e.getWheelRotation());
         zoom *= scale;
+//
+//        double xDistance = e.getX() - cameraX.doubleValue();
+//        double yDistance = e.getY() - cameraY.doubleValue();
+//
+//        cameraX = e.getX() - xDistance*scale;
+//        cameraY = e.getY() - yDistance*scale;
 
-        GridPoint pos = getGridPos(super.getWidth() - e.getX(), super.getHeight() - e.getY());
-
-        double rowDistance = pos.row - cameraRow.doubleValue();
-        double colDistance = pos.col - cameraCol.doubleValue();
-
-        cameraRow = pos.row - rowDistance*scale;
-        cameraCol = pos.col - colDistance*scale;
+        cameraX = (cameraX.doubleValue() + e.getX() - getWidth()/2.0) * scale - e.getX() + getWidth()/2.0;
+        cameraY = (cameraY.doubleValue() + e.getY() - getHeight()/2.0) * scale - e.getY() + getHeight()/2.0;
     }
 
     // ==== CAMERA
@@ -238,37 +297,39 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
      * Moves the cursor to the closest point where it will be inside these margins, if it is not already. **/
     public void moveCameraToCursor(){
         if (GuiConstants.CAMERA_FOLLOW_CURSOR) {
-            Point cameraPos = getScreenPos(cameraRow.doubleValue(), cameraCol.doubleValue(), cameraDepth.doubleValue());
-            Point cursorPos = getScreenPos(cursorRow+0.5, cursorCol+0.5, cursorDepth+0.5);
-            int followXScreen = (int)(zoom* GuiConstants.FOLLOW_X_MARGIN);
-            int followYScreen = (int)(zoom* GuiConstants.FOLLOW_Y_MARGIN);
+            Point cursorPos = getScreenPos(cursorRow+0.5, cursorCol+0.5, battle.getTile(cursorRow, cursorCol).getHeight());
+
+            int x = cameraX.intValue();
+            int y = cameraY.intValue();
+
+            int followXScreen = (int)(zoom*GuiConstants.FOLLOW_X_MARGIN);
+            int followYScreen = (int)(zoom*GuiConstants.FOLLOW_Y_MARGIN);
 
             boolean cameraMoved = false;
 
             if (cursorPos.x < followXScreen){
-                cameraPos.x += cursorPos.x - followXScreen; cameraMoved = true;
+                x += cursorPos.x - followXScreen; cameraMoved = true;
             } else if (cursorPos.x > super.getWidth() - followXScreen - shop.innerWidth()){
-                cameraPos.x += cursorPos.x - super.getWidth() + followXScreen + shop.innerWidth(); cameraMoved = true;
+                x += cursorPos.x - super.getWidth() + followXScreen + shop.innerWidth(); cameraMoved = true;
             }
 
             if (cursorPos.y < followYScreen) {
-                cameraPos.y += cursorPos.y - followYScreen; cameraMoved = true;
+                y += cursorPos.y - followYScreen; cameraMoved = true;
             } else if (cursorPos.y > super.getHeight() - followYScreen) {
-                cameraPos.y += cursorPos.y - super.getHeight() + followYScreen; cameraMoved = true;
+                y += cursorPos.y - super.getHeight() + followYScreen; cameraMoved = true;
             }
 
-            if (cameraMoved) moveCameraToScreenPoint(cameraPos.x, cameraPos.y);
+            if (cameraMoved) moveCameraToScreenPoint(x, y);
         }
     }
 
     public void moveCameraToScreenPoint(int x, int y){
-        GridPoint pos = getGridPos(x, y);
         if (GuiConstants.EASE_CAMERA){
-            cameraRow = new AnimatedValue(GuiConstants.CAMERA_SPEED, cameraRow.doubleValue(), pos.row);
-            cameraCol = new AnimatedValue(GuiConstants.CAMERA_SPEED, cameraCol.doubleValue(), pos.col);
+            cameraX = new AnimatedValue(GuiConstants.CAMERA_SPEED, cameraX.doubleValue(), x);
+            cameraY = new AnimatedValue(GuiConstants.CAMERA_SPEED, cameraY.doubleValue(), y);
         } else {
-            cameraRow = pos.row;
-            cameraCol = pos.col;
+            cameraX = x;
+            cameraY = y;
         }
     }
 
@@ -276,18 +337,28 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
     public void setCursor(int row, int col){
         if (row < 0 || row >= battle.numRows() || col < 0 || col >= battle.numCols()) return;
         battle.getTile(cursorRow, cursorCol).onCursorUnhover();
-        cursorRow = row;
-        cursorCol = col;
 
-        if (GuiConstants.EASE_CURSOR) {
-            showCursorRow = new AnimatedValue(GuiConstants.CURSOR_SPEED, showCursorRow.doubleValue(), cursorRow);
-            showCursorCol = new AnimatedValue(GuiConstants.CURSOR_SPEED, showCursorCol.doubleValue(), cursorCol);
-        } else {
-            showCursorRow = cursorRow;
-            showCursorCol = cursorCol;
+        if (!cursorAnimator.isRunning()) {
+            fromCursorRow = cursorRow;
+            fromCursorCol = cursorCol;
         }
 
-        battle.getTile(cursorRow, cursorCol).onCursorHover();
+        cursorRow = row;
+        cursorCol = col;
+        Tile hoveredTile = battle.getTile(cursorRow, cursorCol);
+
+        if (GuiConstants.EASE_CURSOR) {
+            cursorAnimator = new AnimatedValue(GuiConstants.CURSOR_SPEED, showCursorRow.doubleValue(), cursorRow);
+            showCursorRow = cursorAnimator;
+            showCursorCol = new AnimatedValue(GuiConstants.CURSOR_SPEED, showCursorCol.doubleValue(), cursorCol);
+            cursorCorners.easeTo(hoveredTile.getBase());
+        } else {
+            showCursorRow = new AnimatedValue(cursorRow);
+            showCursorCol = new AnimatedValue(cursorCol);
+            cursorCorners.set(hoveredTile.getBase());
+        }
+
+        hoveredTile.onCursorHover();
         moveCameraToCursor();
     }
 
@@ -305,7 +376,7 @@ public class GamePanel extends ElementPanel implements MouseInputListener, Mouse
      * @param row tile's row (west-east)
      * @param col tile's column (north-south)
      */
-    public void interact(int row, int col){
+    public void mapInteract(int row, int col){
         Tile tile = battle.getTile(row, col);
         System.out.println("interacted with "+tile);
 

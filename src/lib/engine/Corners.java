@@ -24,4 +24,7 @@ public class Corners {
         se = -1;
         ne = -1;
     }
+
+    private static final Corners FLAT = new Corners(0, 0, 0, 0);
+    public static Corners flatCorners() {return FLAT;}
 }

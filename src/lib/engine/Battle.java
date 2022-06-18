@@ -106,7 +106,7 @@ public class Battle {
     /** Claim a tile and place a new unit of the given type. **/
     public void claimAndPlaceUnit(Player player, UnitData unitType, int x, int y){
         map[x][y].setOwner(player);
-        map[x][y].setUnit(new Unit(unitType, player));
+        map[x][y].setUnit(new Unit(unitType, this, player));
     }
 
     /** Run something on each tile. **/

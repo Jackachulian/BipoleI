@@ -17,6 +17,10 @@ public class AnimatedValue extends Number {
         this(new Animation(duration), start, end);
     }
 
+    public AnimatedValue(Number value) {
+        this(0, 0, value.doubleValue());
+    }
+
     @Override
     public double doubleValue() {
         if (animation.isFinished()){
@@ -39,5 +43,13 @@ public class AnimatedValue extends Number {
     @Override
     public float floatValue() {
         return (float)doubleValue();
+    }
+
+    public double getStart() {
+        return start;
+    }
+
+    public boolean isRunning() {
+        return animation.getDuration() > 0 && !animation.isFinished();
     }
 }
