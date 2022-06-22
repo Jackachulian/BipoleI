@@ -12,8 +12,8 @@ public class BipoleI {
 
     public static void main(String[] args) {
         GameFrame frame = new GameFrame();
-        Player player = new Player(new Color(72, 132, 234));
-        Player enemy = new Player(new Color(231, 75, 81));
+        Player player = new Player(Colors.ALLY);
+        Player enemy = new Player(Colors.ENEMY);
         Battle battle = new Battle(player, enemy);
 
         battle.claimAndPlaceUnit(player, Units.CASTLE, 7, 0);

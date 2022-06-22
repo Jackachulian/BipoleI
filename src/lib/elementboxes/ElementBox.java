@@ -25,25 +25,34 @@ public class ElementBox {
     /** If each side of the border is drawn. **/
     public boolean borderLeft, borderRight, borderTop, borderBottom;
     /** Color of this tile's text and other foreground, depending on the elementbox type. **/
-    public Color color = Colors.FG_COLOR;
+    public Color color = Colors.FG;
     /** Foreground color if this item is not focused or hovered over. **/
-    public Color colorFaded = Colors.FG_COLOR_FADED;
+    public Color colorFaded = Colors.FG_DIM;
+    /** If this element's background should be drawn. **/
+    public boolean bg = true;
     /** Color of the background of this element. **/
-    public Color bgColor = Colors.BG_COLOR;
+    public Color bgColor = Colors.BG;
     /** Background color if not focused. **/
-    public Color bgColorFaded = Colors.BG_COLOR_FADED;
+    public Color bgColorFaded = Colors.BG_DIM;
     /** Color of the 1px border of this element. **/
-    public Color borderColor = Colors.BORDER_COLOR;
+    public Color borderColor = Colors.BORDER;
     /** Border color if not focused. **/
-    public Color borderColorFaded = Colors.BORDER_COLOR_FADED;
+    public Color borderColorFaded = Colors.BORDER_DIM;
     /** Border color if hovered over. **/
-    public Color hoverColor = Colors.HOVER_COLOR;
+    public Color hoverColor = Colors.HOVER;
     /** Border color if selected. **/
-    public Color selectColor = Colors.SELECT_COLOR;
+    public Color selectColor = Colors.SELECT;
     /** If this element should be selected when it is clicked/interacted with. **/
     public boolean selectable;
-    /** If this element should be highlighted when hovered over, but does not have to be selectable. **/
+    /** If this element can be hovered over in place of elements below it. **/
+    public boolean hoverable;
+    /** If this element can take focus on the element panel. (different from if this element's focused can become true.) **/
+    public boolean focusable;
+    /** If this element should get a light green border when hovered over. Default is true if hoverable is set to true. **/
     public boolean hoverHighlight;
+    /** If this element should be dimmed when the mouse is not over this element, or this element or a relative is not focused.
+     *  Adds a "listener" type thing to the elementPanel on resize. (Default is true.) **/
+    public boolean mouseOverUndim;
 
     /** Indicates that a resize is needed after these elements' height was changed by an internal method. **/
     public boolean resizeNeeded;
@@ -51,12 +60,14 @@ public class ElementBox {
     public boolean selected;
     /** If preselected, meaning once its container is selected this will gain selection, and it has a special color. Only works with some containers. **/
     public boolean preselected;
-    /** If a descendant of this element is currently selected. **/
-    public boolean focused;
     /** If this element is currently being hovered over by the player. **/
     public boolean hovered;
-    /** If a descendant of this element is currently hovered. **/
-    public boolean descHovered;
+    /** If this element listens for mouse-over and the mouse is over this unit. (Different from hovering, only one element can be "hovered" over) **/
+    public boolean mouseOver;
+    /** If this element is not dimmed due to being hovered over. **/
+    public boolean undimmed = true;
+    /** If this or a descendant of this element is currently selected. **/
+    public boolean focused;
 
     /** Describes the way that children are arranged within this element. **/
     public enum DisplayType {
@@ -96,8 +107,10 @@ public class ElementBox {
 
     /** Draw the background of this element.Typically called before children are drawn. **/
     public void drawBackground(Graphics g) {
-        g.setColor(isFocused() ? bgColor : bgColorFaded);
-        g.fillRect(rect.x, rect.y, rect.width, rect.height);
+        if (bg) {
+            g.setColor(undimmed || focused ? bgColor : bgColorFaded);
+            g.fillRect(rect.x, rect.y, rect.width, rect.height);
+        }
     }
 
     /** Draw all children of this element Typically called before border is drawn. **/
@@ -112,13 +125,13 @@ public class ElementBox {
         g.setColor(
             selected
                 ? selectColor
-                : hovered
+                : hovered && hoverHighlight
                     ? hoverColor
                     : preselected
-                        ? isFocused()
-                            ? Colors.PRESELECT_COLOR
-                            : Colors.PRESELECT_COLOR_FADED
-                        : isFocused()
+                        ? undimmed || focused
+                            ? Colors.PRESELECT
+                            : Colors.PRESELECT_DIM
+                        : undimmed || focused
                             ? borderColor
                             : borderColorFaded);
         drawBorderLines(g);
@@ -141,6 +154,7 @@ public class ElementBox {
      */
 
     public void resize(ElementBox parent, int offset) {
+        resizeNeeded = false;
         rect.x = parent.rect.x;
         rect.y = parent.rect.y;
 
@@ -214,11 +228,34 @@ public class ElementBox {
         }
     }
 
-    /** Select this element and focus all descendants. **/
     public void select() {
         selected = true;
+    }
+    public void unselect() {
+        selected = false;
+    }
+    public void hover() {
+        hovered = true;
+        descHover();
+    }
+    public void unhover() {
+        hovered = false;
+        descUnhover();
+    }
+
+    /** Descendant-hover this element and all descendants. **/
+    public void descHover() {
+        mouseOver = true;
         for (ElementBox child : children) {
-            child.focus();
+            child.descHover();
+        }
+    }
+
+    /** Descendant-unhover this element and all descendants. **/
+    public void descUnhover() {
+        mouseOver = false;
+        for (ElementBox child : children) {
+            child.descUnhover();
         }
     }
 
@@ -230,14 +267,6 @@ public class ElementBox {
         }
     }
 
-    /** Deselect this element and unfocus all descendants. **/
-    public void deselect() {
-        selected = false;
-        for (ElementBox child : children) {
-            child.unfocus();
-        }
-    }
-
     /** Unfocus this element and all descendants. **/
     public void unfocus() {
         focused = false;
@@ -246,17 +275,65 @@ public class ElementBox {
         }
     }
 
+    /** Called when the mouse is over this element. To be called on element with mouseOverUndim = true. **/
+    public void mouseOver() {
+        mouseOver = true;
+        undim();
+    }
+
+    /** Called when the mouse is off this element. To be called on element with mouseOverUndim = true. **/
+    public void mouseOff() {
+        mouseOver = false;
+        dim();
+    }
+
+    /** Undim this element and all sub-elements. To be called if moused over. **/
+    public void undim() {
+        undimmed = true;
+        for (ElementBox child : children) {
+            child.undim();
+        }
+    }
+
+    /** Dim this element and all sub-elements. To be called if moused off. **/
+    public void dim() {
+        undimmed = false;
+        for (ElementBox child : children) {
+            child.dim();
+        }
+    }
+
+    /** If this element can be selected. **/
+    public boolean isSelectable() {
+        return selectable;
+    }
+
+    /** If this element can be hovered over. **/
+    public boolean isHoverable() {
+        return hoverable;
+    }
+
+    /** If this element can take focus in the element panel. (NOT if this element's focusable can become true.) **/
+    public boolean isFocusable() {
+        return focusable;
+    }
+
+    /** Called when focused. If a non-null element is returned, it is set as the new selection in the elementPanel. **/
+    public ElementBox verifySelection(){
+        return null;
+    }
+
     /** Method to run when this element is interacted with (Z pressed or clicked while selected). **/
     public void onInteract(){}
 
     /** Method to run when X is pressed while a child of this element is selected. **/
     public void onCancel(ElementBox child){}
 
-    /** Methods to run when the arrow keys/WASD are used while a child of this element is selected. **/
-    public void onLeft(ElementBox child){}
-    public void onRight(ElementBox child){}
-    public void onUp(ElementBox child){}
-    public void onDown(ElementBox child){}
+    /** Methods to run when the arrow keys/WASD are used on this element while it is focused.
+     * Returns the item selected (that may or not be different from the current one). **/
+    public ElementBox onMove(int r, int c) {
+        return null;
+    }
 
     /** Method to run when the mouse is pressed while hovered over this element. **/
     public void onMousePress(Point pressPoint){}
@@ -337,11 +414,6 @@ public class ElementBox {
         return false;
     }
 
-    /** If this should be faded or not. **/
-    public boolean isFocused() {
-        return descHovered || hovered || selected || focused;
-    }
-
     // Accessors
     public List<ElementBox> getChildren() {
         return children;
@@ -349,8 +421,6 @@ public class ElementBox {
 
     @Override
     public String toString() {
-        return rect.toString();
+        return String.format("(%d,%d) %dx%d", rect.x, rect.y, rect.width, rect.height);
     }
-
-
 }

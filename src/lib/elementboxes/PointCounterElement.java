@@ -8,5 +8,7 @@ public class PointCounterElement extends TextElement {
         setBorder(true);
         borderTop = false;
         centerX = true;
+
+        mouseOverUndim = false;
     }
 }

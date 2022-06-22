@@ -14,9 +14,9 @@ public class Mesh {
     }
 
     /** Draw all shapes in this mesh according to the passed polygon base. **/
-    public void draw(Graphics g, Polygon polygon, Color segmentColor, Color lineColor) {
+    public void draw(Graphics g, Polygon polygon, Color segmentColor, Color faceColor, double zoom) {
         for (Shape shape : shapes) {
-            shape.draw(g, polygon, segmentColor, lineColor);
+            shape.draw(g, polygon, segmentColor, faceColor, zoom);
         }
     }
 

@@ -1,6 +1,7 @@
 package lib.engine;
 
-import lib.ColorUtils;
+import lib.Camera;
+import lib.Colors;
 import lib.DrawUtils;
 import lib.GuiConstants;
 import lib.elementboxes.TextElement;
@@ -44,6 +45,10 @@ public class Tile {
     private final Corners lowest;
     /** Polygon of this tile's borders on the screen. Reset each time this tile is drawn. Used for drawing and mouse click position grid position finding. **/
     private final Polygon polygon;
+    /** Polygon of the eastern face. Used for mouse positional stuff **/
+    private final Polygon leftFace;
+    /** Polygon of the southern face. Used for mouse positional stuff **/
+    private final Polygon rightFace;
     /** Center of this tile on the screen. Calculated on redraw. Used for various draws. **/
     public final Point center;
 
@@ -81,6 +86,8 @@ public class Tile {
         around = new Corners();
         lowest = new Corners();
         polygon = new Polygon();
+        rightFace = new Polygon();
+        leftFace = new Polygon();
         center = new Point();
     }
 
@@ -119,36 +126,49 @@ public class Tile {
     }
 
     /** Draw the borders for the base of this tile. See drawBase(Graphics, Point, etc...) for details. **/
-    public void drawBase(Graphics g, double x, double y, double z) {
+    public void drawBase(Graphics g, double x, double y) {
         // Screen coordinates for corners
         final int
-                nwx = (int)x,
-                nex = (int)(x + z* GuiConstants.ROW_X_OFFSET),
-                swx = (int)(x + z* GuiConstants.COL_X_OFFSET),
-//                sex = (int)(x + z*(GuiConstants.ROW_X_OFFSET + GuiConstants.COL_X_OFFSET)), // ayo???
-                sex = nwx, // ayo???
-                nwy = (int)(y - z * GuiConstants.DEPTH_Y_OFFSET*base.nw),
-                ney = (int)(y + z * (GuiConstants.ROW_Y_OFFSET - GuiConstants.DEPTH_Y_OFFSET*base.ne)),
-                swy = (int)(y + z * (GuiConstants.COL_Y_OFFSET - GuiConstants.DEPTH_Y_OFFSET*base.sw)),
-                sey = (int)(y + z*(GuiConstants.ROW_Y_OFFSET + GuiConstants.COL_Y_OFFSET - GuiConstants.DEPTH_Y_OFFSET*base.se)),
-                sway = (int)(y + z * (GuiConstants.COL_Y_OFFSET - GuiConstants.DEPTH_Y_OFFSET*around.sw)),
-                neay = (int)(y + z * (GuiConstants.ROW_Y_OFFSET - GuiConstants.DEPTH_Y_OFFSET*around.ne)),
-                seay = (int)(y + z * (GuiConstants.ROW_Y_OFFSET + GuiConstants.COL_Y_OFFSET - GuiConstants.DEPTH_Y_OFFSET*around.se)),
-                swly = (int)(y + z * (GuiConstants.ROW_Y_OFFSET - GuiConstants.DEPTH_Y_OFFSET*lowest.sw)),
-                nely = (int)(y + z * (GuiConstants.COL_Y_OFFSET - GuiConstants.DEPTH_Y_OFFSET*lowest.ne)),
-                sely = (int)(y + z*(GuiConstants.ROW_Y_OFFSET + GuiConstants.COL_Y_OFFSET - GuiConstants.DEPTH_Y_OFFSET*lowest.se));
+                bx = (int)x,
+                lx = (int)(x + Camera.zoom * Camera.rowXOffset),
+                rx = (int)(x + Camera.zoom * Camera.colXOffset),
+                fx = (int)(x + Camera.zoom * (Camera.rowXOffset + Camera.colXOffset)),
+                by = (int)(y - Camera.zoom * Camera.DEPTH_Y_OFFSET*base.back()),
+                ly = (int)(y + Camera.zoom * (Camera.rowYOffset - Camera.DEPTH_Y_OFFSET*base.left())),
+                ry = (int)(y + Camera.zoom * (Camera.colYOffset - Camera.DEPTH_Y_OFFSET*base.right())),
+                fy = (int)(y + Camera.zoom * (Camera.rowYOffset + Camera.colYOffset - Camera.DEPTH_Y_OFFSET*base.front())),
+                ray = (int)(y + Camera.zoom * (Camera.colYOffset - Camera.DEPTH_Y_OFFSET*around.right())),
+                lay = (int)(y + Camera.zoom * (Camera.rowYOffset - Camera.DEPTH_Y_OFFSET*around.left())),
+                fay = (int)(y + Camera.zoom * (Camera.rowYOffset + Camera.colYOffset - Camera.DEPTH_Y_OFFSET*around.front())),
+                rly = (int)(y + Camera.zoom * (Camera.rowYOffset - Camera.DEPTH_Y_OFFSET*lowest.right())),
+                lly = (int)(y + Camera.zoom * (Camera.colYOffset - Camera.DEPTH_Y_OFFSET*lowest.left())),
+                fly = (int)(y + Camera.zoom * (Camera.rowYOffset + Camera.colYOffset - Camera.DEPTH_Y_OFFSET*lowest.front()));
 
         // Reset polygon and add tile corner points
         // Block polygon access during so the mouse/other commands don't access the polygon while it's updating points
         synchronized (polygon) {
             polygon.reset();
-            polygon.addPoint(nwx, nwy);
-            polygon.addPoint(nex, ney);
-            polygon.addPoint(sex, sey);
-            polygon.addPoint(swx, swy);
+            polygon.addPoint(bx, by);
+            polygon.addPoint(lx, ly);
+            polygon.addPoint(fx, fy);
+            polygon.addPoint(rx, ry);
+        }
+        synchronized (leftFace) {
+            leftFace.reset();
+            leftFace.addPoint(lx, ly);
+            leftFace.addPoint(lx, lly);
+            leftFace.addPoint(fx, fly);
+            leftFace.addPoint(fx, fy);
+        }
+        synchronized (rightFace) {
+            rightFace.reset();
+            rightFace.addPoint(rx, ry);
+            rightFace.addPoint(rx, rly);
+            rightFace.addPoint(fx, fly);
+            rightFace.addPoint(fx, fy);
         }
         synchronized (center) {
-            center.move(nwx, DrawUtils.lerp(nwy, sey, 0.5));
+            center.move(bx, DrawUtils.lerp(by, fy, 0.5));
         }
 
         // Fill base
@@ -156,15 +176,16 @@ public class Tile {
         g.fillPolygon(polygon);
 
         // If the southeastern corner is lower, south and east wall faces are always needed
-        if (base.se > lowest.se) {
-//            g.setColor(Color.CYAN);
-//            g.fillRect(sex-4, sey-4, 8, 8);
-//            g.setColor(getLandColor());
+        if (base.front() > lowest.front()) {
+            g.setColor(getLandColor());
+            g.fillPolygon(leftFace);
+            g.setColor(Color.CYAN);
+            g.drawPolygon(leftFace);
 
-            // Southern wall face
-            g.fillPolygon(new int[]{swx, swx, sex, sex}, new int[]{swy, swly, sely, sey}, 4);
-            // Eastern wall face
-            g.fillPolygon(new int[]{nex, nex, sex, sex}, new int[]{ney, nely, sely, sey}, 4);
+            g.setColor(getLandColor());
+            g.fillPolygon(rightFace);
+            g.setColor(Color.MAGENTA);
+            g.drawPolygon(rightFace);
         }
 
         // If being contested, draw moving diagonal lines
@@ -173,67 +194,76 @@ public class Tile {
             double cycle = (double)(System.currentTimeMillis()%GuiConstants.CONTEST_SHIFT_PERIOD)/GuiConstants.CONTEST_SHIFT_PERIOD;
             for (double i = GuiConstants.CONTESTED_STEP*cycle; i < 1; i += GuiConstants.CONTESTED_STEP) {
                 // NW-NE-SW triangle
-                g.drawLine(DrawUtils.lerp(nwx, nex, i), DrawUtils.lerp(nwy, ney, i), DrawUtils.lerp(nwx, swx, i), DrawUtils.lerp(nwy, swy, i));
+                g.drawLine(DrawUtils.lerp(bx, lx, i), DrawUtils.lerp(by, ly, i), DrawUtils.lerp(bx, rx, i), DrawUtils.lerp(by, ry, i));
                 // SE-NE-SW triangle (Lerp backwards so lines move same direction)
-                g.drawLine(DrawUtils.lerp(nex, sex, i), DrawUtils.lerp(ney, sey, i), DrawUtils.lerp(swx, sex, i), DrawUtils.lerp(swy, sey, i));
+                g.drawLine(DrawUtils.lerp(lx, fx, i), DrawUtils.lerp(ly, fy, i), DrawUtils.lerp(rx, fx, i), DrawUtils.lerp(ry, fy, i));
             }
         }
 
         // Northern and western border, always drawn
         g.setColor(owner!=null ? getColor() : Color.WHITE);
-        g.drawLine(nwx, nwy, nex, ney); // northern border
-        g.drawLine(nwx, nwy, swx, swy); // western border
+        g.drawLine(bx, by, lx, ly); // northern border
+        g.drawLine(bx, by, rx, ry); // western border
 
         // southern border if both corners not shared on southern side
-        if (base.sw > lowest.sw || base.se > lowest.se) {
-            g.drawLine(swx, swy, sex, sey);
+        if (base.right() > lowest.right() || base.front() > lowest.front()) {
+            g.drawLine(rx, ry, fx, fy);
         }
         // eastern border if both corners not shared on eastern side
-        if (base.ne > lowest.ne || base.se > lowest.se) {
-            g.drawLine(nex, ney, sex, sey);
+        if (base.left() > lowest.left() || base.front() > lowest.front()) {
+            g.drawLine(lx, ly, fx, fy);
         }
 
-        // northeast depth line if needed
-        if ((base.ne > around.ne && !(GuiConstants.JOIN_SIDE_FACES && around.ne == -1)) || base.ne == around.ne && !GuiConstants.JOIN_SIDE_FACES) {
-            g.drawLine(nex, ney, nex, GuiConstants.JOIN_SIDE_FACES ? neay : nely);
+        // left depth line if needed
+        if ((base.left() > around.left() && !(GuiConstants.JOIN_SIDE_FACES && around.left() == -1)) || base.left() == around.left() && !GuiConstants.JOIN_SIDE_FACES) {
+            g.drawLine(lx, ly, lx, GuiConstants.JOIN_SIDE_FACES ? lay : lly);
         }
-        // southeast depth line if needed
-        if ((base.se > around.se && !(GuiConstants.JOIN_SIDE_FACES && around.se == -1))) {
-            g.drawLine(sex, sey, sex, seay);
+        // front depth line if needed
+        if ((base.front() > around.front() && !(GuiConstants.JOIN_SIDE_FACES && around.front() == -1))) {
+            g.drawLine(fx, fy, fx, fay);
         }
-        // southwest height line if needed
-        if ((base.sw > around.sw && !(GuiConstants.JOIN_SIDE_FACES && around.sw == -1)) || base.sw == around.sw && !GuiConstants.JOIN_SIDE_FACES) {
-            g.drawLine(swx, swy, swx, GuiConstants.JOIN_SIDE_FACES ? sway : swly);
+        // right height line if needed
+        if ((base.right() > around.right() && !(GuiConstants.JOIN_SIDE_FACES && around.right() == -1)) || base.right() == around.right() && !GuiConstants.JOIN_SIDE_FACES) {
+            g.drawLine(rx, ry, rx, GuiConstants.JOIN_SIDE_FACES ? ray : rly);
         }
 
 
         // If this is an edge tile, draw the lower borders (south and east)
         // southern ground line if needed
-        if (lowest.sw == -1 && lowest.se == -1) {
-            g.drawLine(swx, swly, sex, sely);
+        if (lowest.right() == -1 && lowest.front() == -1) {
+            g.drawLine(rx, rly, fx, fly);
         }
         // eastern ground line if needed
-        if (lowest.ne == -1 && lowest.se == -1) {
-            g.drawLine(nex, nely, sex, sely);
+        if (lowest.left() == -1 && lowest.front() == -1) {
+            g.drawLine(lx, lly, fx, fly);
         }
+
+        g.setColor(Color.GREEN);
+        g.fillRect(bx-2, by-2, 4, 4);
+        g.setColor(Color.CYAN);
+        g.fillRect(lx-2, ly-2, 4, 4);
+        g.setColor(Color.MAGENTA);
+        g.fillRect(rx-2, ry-2, 4, 4);
+        g.setColor(Color.YELLOW);
+        g.fillRect(fx-2, fy-2, 4, 4);
     }
 
-    /** Determine if a given position on the screen is within this tile on the screen with the given zoom. **/
+    /** Determine if a given position on the screen is within this tile on the screen with the given zoom (including side faces). **/
     public boolean containsPoint(int x, int y) {
-        return polygon.contains(x, y);
+        return polygon.contains(x, y) || leftFace.contains(x, y) || rightFace.contains(x, y);
     }
 
     /** Draw the borders for the base of this tile.
      * x and y are the screen coordinates to draw at.
      * nh, wh, sh and eh are the heights of the northern, western, southern and eastern tiles, respectively. **/
-    public void drawBase(Graphics g, Point pos, double z){
-        drawBase(g, pos.x, pos.y, z);
+    public void drawBase(Graphics g, Point pos){
+        drawBase(g, pos.x, pos.y);
     }
 
     /** Draw UI elements associated with this tile. **/
-    public void drawUI(Graphics g, double z) {
+    public void drawUI(Graphics g) {
         if (beingContested()) {
-            DrawUtils.drawBar(g, center.x, center.y, z,
+            DrawUtils.drawBar(g, center.x, center.y,
                     (double)(System.currentTimeMillis()-contestStartTime)/GameConstants.CAPTURE_TIME, contestor.color);
 
             DrawUtils.drawCenteredString(g,
@@ -242,7 +272,7 @@ public class Tile {
                     Color.WHITE,
                     TextElement.GAME_FONT_SMALL);
         } else if (hasUnit()) {
-            unit.drawUI(g, this, z);
+            unit.drawUI(g, this);
         }
     }
 
@@ -274,9 +304,9 @@ public class Tile {
         if (brightness == 0){
             return base;
         } else if (brightness > 0){
-            return ColorUtils.blendColors(base, Color.WHITE, displayBrightness.doubleValue()*scale);
+            return Colors.blendColors(base, Color.WHITE, displayBrightness.doubleValue()*scale);
         } else {
-            return ColorUtils.blendColors(base, Color.BLACK, -displayBrightness.doubleValue()*scale);
+            return Colors.blendColors(base, Color.BLACK, -displayBrightness.doubleValue()*scale);
         }
     }
 
@@ -339,5 +369,13 @@ public class Tile {
 
     public Polygon getPolygon() {
         return polygon;
+    }
+
+    public Polygon getLeftFace() {
+        return leftFace;
+    }
+
+    public Polygon getRightFace() {
+        return rightFace;
     }
 }

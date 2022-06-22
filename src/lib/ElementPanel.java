@@ -6,33 +6,33 @@ import javax.swing.*;
 import javax.swing.event.MouseInputListener;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.Objects;
+import java.util.HashSet;
 import java.util.Stack;
+import java.util.function.Predicate;
 
 public abstract class ElementPanel extends JPanel implements MouseInputListener, MouseMotionListener, MouseWheelListener {
     /** The root elementbox that contains all elements, mirroring this panel's dimensions.
      * The root is never directly drawn, but the elementPanel draws all of its children, which are drawn normally. **/
-    protected ElementBox root;
+    protected RootElement root;
     /** The element that is currently selected.
      * If root is selected, functionality depends on the panel that extends this. Root is selected initially on start. **/
     protected ElementBox selectedElement;
-    /** The parent of the selected element. Null if the selected element is root. **/
-    protected ElementBox selectedParent;
-    /** The path of parents of the selected element. **/
-    protected Stack<ElementBox> selectionPath;
     /** The element that is currently being hovered over. **/
     protected ElementBox hoveredElement;
-    /** The path of parents of the hovered element. **/
-    protected Stack<ElementBox> hoverPath;
-    /** The element that was "pressed" (mouse click started while hovered over the element). **/
-    protected ElementBox pressedElement;
+    /** The element that is currently focused. Keyboard inputs are sent to this element. **/
+    protected ElementBox focusedElement;
+    /** All elements that need to check if mouse-overed. **/
+    protected final HashSet<ElementBox> checkMouseOver;
+    /** Boolean to keep track of the mouse state. **/
+    public boolean mouseDown;
 
-    public ElementPanel(ElementBox root) {
+    public ElementPanel(RootElement root) {
         this.root = root;
         selectedElement = root;
-        selectionPath = new Stack<>();
         hoveredElement = root;
-        hoverPath = new Stack<>();
+        focusedElement = root;
+
+        checkMouseOver = new HashSet<>();
 
         addComponentListener(new ComponentAdapter() {
             public void componentResized(ComponentEvent componentEvent) {
@@ -41,11 +41,30 @@ public abstract class ElementPanel extends JPanel implements MouseInputListener,
         });
     }
 
-    public void resizeElements(){
-        root.rect.width = getWidth();
-        root.rect.height = getHeight();
-        for (ElementBox child : root.getChildren()){
-            child.resize(root, 0);
+    /** Resize all elements in the given container, updating this ElementPanel's mouseOverElements list as needed. **/
+    public void resizeElements(ElementBox container){
+        container.rect.width = getWidth();
+        container.rect.height = getHeight();
+        for (ElementBox child : container.getChildren()){
+            child.resize(container, 0);
+        }
+    }
+
+    /** Resize ALL components in this panel. **/
+    public void resizeElements() {
+        resizeElements(root);
+    }
+
+    /** Updates this panel's elements that require to be checked if the mouse is over them (even if not "hovered" which only one element can be). **/
+    public void updateMouseOvers(ElementBox element) {
+        if (element.mouseOverUndim) {
+            checkMouseOver.add(element);
+            element.dim();
+        } else {
+            checkMouseOver.remove(element);
+        }
+        for (ElementBox child : element.getChildren()) {
+            updateMouseOvers(child);
         }
     }
 
@@ -60,167 +79,144 @@ public abstract class ElementPanel extends JPanel implements MouseInputListener,
         root.addChild(element);
     }
 
-    /** Find the selectable element that the given point (typically mouse hover/click point) is currently over. **/
-    public ElementBox getHoveredElement(ElementBox element, Point clickPoint, boolean onlySelectable) {
-        return getHoveredElement(element, clickPoint, element, onlySelectable);
-    }
-
-    public ElementBox getHoveredElement(ElementBox element, Point clickPoint, ElementBox youngestElement, boolean onlySelectable) {
-        for (ElementBox child : element.getChildren()) {
-            if (child.rect.contains(clickPoint)) {
-                if (!onlySelectable || child.selectable) {
-                    youngestElement = child;
-                }
-                return getHoveredElement(child, clickPoint, youngestElement, onlySelectable);
-            }
-        }
-        return youngestElement;
-    }
-
-    public ElementBox getParentOf(ElementBox element) {
-        if (element == root) return null;
-        return findParentIn(root, element);
-    }
-
-    public ElementBox findParentIn(ElementBox element, ElementBox targetChild) {
-        for (ElementBox child : element.getChildren()) {
-            if (child == targetChild) {
-                return element;
-            } else {
-                ElementBox parent = findParentIn(child, targetChild);
-                if (parent != null) return parent;
-            }
-        }
-        return null;
-    }
-
-    /** Get the chain of element children that leads to a certain element. **/
-    public void getElementPathTo(ElementBox element, Stack<ElementBox> path) {
-        path.clear();
-        path.push(root);
-        findElementPathTo(element, path);
-        path.pop();
-    }
-
-    public void findElementPathTo(ElementBox element, Stack<ElementBox> path) {
-        for (ElementBox child : path.peek().getChildren()) {
-            path.push(child);
-            if (element == child) return;
-            findElementPathTo(element, path);
-            if (path.peek() == element) return;
-            path.pop();
-        }
+    /** When Z is pressed (interact), call the interaction method on the currently selected item. **/
+    public void onInteract() {
+        selectedElement.onInteract();
     }
 
     /** When X is pressed (cancel/back), leave the current parent and traverse back until a selectable element is found and select it.
      * If this is the root, do nothing. **/
     public void onCancel() {
-        while (!selectionPath.isEmpty()) {
-            ElementBox parent = selectionPath.pop();
-            parent.focused = false;
-            if (parent.selectable) {
-                selectElement(parent);
-                break;
-            }
-        }
-        if (selectionPath.isEmpty()) {
-            selectElement(root);
-        }
+        if (focusedElement != root) focusedElement.dim();
+        focusElement(root);
+        selectElement(root);
     }
 
-    /** Call onLeft on the selected element's parent. **/
+    public void onMove(int r, int c) {
+        selectElement(focusedElement.onMove(r, c));
+    }
 
     @Override
     public void mouseClicked(MouseEvent e) {
-        if (selectedElement.rect.contains(e.getPoint())) {
-            ElementBox clicked = getHoveredElement(selectedElement, e.getPoint(), true);
-            if (clicked == selectedElement) {
-                selectedElement.onInteract();
-            } else {
-                selectElement(clicked);
-            }
-        } else {
-            ElementBox clicked = getHoveredElement(root, e.getPoint(), true);
-            selectElement(clicked);
-        }
-    }
-
-    public void selectElement(ElementBox element) {
-        if (selectedElement == element) return;
-        selectedElement.deselect();
-        if (element != null && element.selectable) {
-            selectedElement = element;
-        } else {
-            selectedElement = root;
-        }
-        selectedElement.select();
-
-        root.unfocus();
-        getElementPathTo(selectedElement, selectionPath);
-        for (ElementBox elementBox : selectionPath) {
-            elementBox.focused = true;
-        }
-
-        if (!selectionPath.isEmpty()) {
-            selectedParent = selectionPath.peek();
-        }
+        // focus and select moved to mousePressed
     }
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (hoveredElement == null) return;
-        pressedElement = hoveredElement;
-        pressedElement.onMousePress(e.getPoint());
+        mouseDown = true;
+        ElementBox mouseElement = mouseElementExtremum(
+                selectedElement.rect.contains(e.getPoint()) ? selectedElement : root,
+                e.getPoint(),
+                ElementBox::isSelectable
+        );
+
+        // If the pressed element is already selected, interact with it
+        if (mouseElement.selected) {
+            onInteract();
+        }
+        // otherwise, select it and focus the highest focusable element
+        else {
+            selectElement(mouseElement);
+            focusElement(mouseElementExtremum(
+                    focusedElement.rect.contains(e.getPoint()) ? focusedElement : root,
+                    e.getPoint(),
+                    ElementBox::isFocusable
+            ));
+        }
     }
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        if (pressedElement == null) return;
-        pressedElement.onMouseDrag(e.getPoint());
+        mouseDown = false;
     }
 
     @Override
     public void mouseDragged(MouseEvent e) {
-        if (pressedElement == null) return;
-        pressedElement.onMouseRelease(e.getPoint());
+
     }
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        if (hoveredElement.rect.contains(e.getPoint())) {
-            ElementBox hovered = getHoveredElement(hoveredElement, e.getPoint(), false);
-            hoverElement(hovered);
-        } else {
-            ElementBox hovered = getHoveredElement(root, e.getPoint(), false);
-            hoverElement(hovered);
+        ElementBox hoverElement = mouseElementExtremum(
+                hoveredElement.rect.contains(e.getPoint()) ? hoveredElement : root,
+                e.getPoint(),
+                ElementBox::isHoverable
+        );
+
+        if (hoverElement != hoveredElement) {
+            root.descUnhover();
+            hoverElement(hoverElement);
+        }
+
+        // Check mouseOvers
+        for (ElementBox element : checkMouseOver) {
+            boolean elemMouseOver = element.rect.contains(e.getPoint());
+            if (!element.mouseOver && elemMouseOver) {
+                element.mouseOver();
+            } else if (element.mouseOver && !elemMouseOver) {
+                element.mouseOff();
+            }
         }
     }
 
-    public void hoverElement(ElementBox element) {
-        if (hoveredElement == element) return;
-        hoveredElement.hovered = false;
-        if (element != null && element.selectable) {
-            hoveredElement = element;
-        } else {
-            hoveredElement = root;
-        }
-        hoveredElement.hovered = true;
+    public void selectElement(ElementBox element) {
+        if (element == null || element == selectedElement) return;
+        selectedElement.unselect();
+        selectedElement = element;
+        selectedElement.select();
+        System.out.println("selected "+selectedElement);
+    }
 
-        for (ElementBox elementBox : hoverPath) {
-            elementBox.descHovered = false;
+    /** Returns true if a new element was hovered. **/
+    public void hoverElement(ElementBox element) {
+        if (element == null || element == hoveredElement) return;
+        hoveredElement.unhover();
+        hoveredElement = element;
+        hoveredElement.hover();
+        System.out.println("hovered "+hoveredElement);
+    }
+
+    public void focusElement(ElementBox element) {
+        if (element == null || element == focusedElement) return;
+        focusedElement.unfocus();
+        focusedElement = element;
+        focusedElement.focus();
+        System.out.println("focused "+focusedElement);
+
+        ElementBox newSelection = focusedElement.verifySelection();
+        if (newSelection != null) selectElement(newSelection);
+    }
+
+    /** Get the element the mouse is over deepest in the hierarchy that passes the given condition.
+     * Should always at least return the root/base container if no others are moused over.
+     * A consumer is applied to the highest element in the hierarchy if there are any branches.
+     * A method to run on the first child found in the container is passed, if one is found. **/
+    public ElementBox mouseElementExtremum(ElementBox container, Point mousePos, Predicate<ElementBox> condition) {
+        Stack<ElementBox> path = new Stack<>();
+        mouseElementPath(path, container, mousePos);
+
+        while (!path.isEmpty()) {
+            ElementBox extremum = path.pop();
+            if (condition.test(extremum)) {
+                return extremum;
+            }
         }
-        getElementPathTo(hoveredElement, hoverPath);
-        System.out.println(hoverPath);
-        for (ElementBox elementBox : hoverPath) {
-            elementBox.descHovered = true;
+
+        return container;
+    }
+
+    /** Build the hierarchy of elements that contain the mouse position in the passed stack. **/
+    public void mouseElementPath(Stack<ElementBox> path, ElementBox container, Point mousePos) {
+        for (ElementBox element : container.getChildren()) {
+            if (element.rect.contains(mousePos)) {
+                path.add(element);
+                mouseElementPath(path, element, mousePos);
+                return;
+            }
         }
     }
 
     public boolean rootSelected() {
         return selectedElement == root;
-    }
-
-    public boolean rootPressed() {
-        return pressedElement == root;
     }
 }

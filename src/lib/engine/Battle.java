@@ -1,8 +1,14 @@
 package lib.engine;
 
+import lib.Camera;
+
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.function.Consumer;
 
-public class Battle {
+/** Represents a battle.
+ * Is iterable. When iterated over, iterates over objet in screen draw order. **/
+public class Battle implements Iterable<Tile> {
     /** All players engaging in this battle. **/
     protected Player[] players;
 
@@ -36,21 +42,21 @@ public class Battle {
                         east = getBase(r+1, c),
                         northeast = getBase(r+1, c-1);
 
-                around.nw = nextLowestCorner(base.nw, north.ne, northwest.se, west.sw);
-                around.sw = nextLowestCorner(base.sw, west.se, southwest.ne, south.nw);
-                around.se = nextLowestCorner(base.se, south.ne, southeast.nw, east.sw);
-                around.ne = nextLowestCorner(base.ne, east.nw, northeast.sw, north.se);
+                around.setNw(nextLowestCorner(base.nw(), north.ne(), northwest.se(), west.sw()));
+                around.setSw(nextLowestCorner(base.sw(), west.se(), southwest.ne(), south.nw()));
+                around.setSe(nextLowestCorner(base.se(), south.ne(), southeast.nw(), east.sw()));
+                around.setNe(nextLowestCorner(base.ne(), east.nw(), northeast.sw(), north.se()));
 
-                lowest.nw = lowestCorner(base.nw, north.ne, northwest.se, west.sw);
-                lowest.sw = lowestCorner(base.sw, west.se, southwest.ne, south.nw);
-                lowest.se = lowestCorner(base.se, south.ne, southeast.nw, east.sw);
-                lowest.ne = lowestCorner(base.ne, east.nw, northeast.sw, north.se);
+                lowest.setNw(lowestCorner(base.nw(), north.ne(), northwest.se(), west.sw()));
+                lowest.setSw(lowestCorner(base.sw(), west.se(), southwest.ne(), south.nw()));
+                lowest.setSe(lowestCorner(base.se(), south.ne(), southeast.nw(), east.sw()));
+                lowest.setNe(lowestCorner(base.ne(), east.nw(), northeast.sw(), north.se()));
             }
         }
     }
 
     /** out of bounds corners, all -1 **/
-    private static final Corners OOB = new Corners(-1, -1, -1, -1);
+    private static final Corners OOB = new Corners();
     private Corners getBase(int row, int col) {
         return withinBounds(row, col) ? map[row][col].getBase() : OOB;
     }
@@ -82,6 +88,56 @@ public class Battle {
         return lowest;
     }
 
+    /** Iterate over the tiles in current draw order. (Depends on rotation) **/
+    public Iterator<Tile> iterator() {
+        return new DrawOrder();
+    }
+
+    public Iterator<Tile> reverseDrawOrder() {
+        return new DrawOrder(!Camera.reverseRows, !Camera.reverseCols);
+    }
+
+    public class DrawOrder implements Iterator<Tile> {
+        private int r;
+        private int c;
+        private final boolean reverseRows;
+        private final boolean reverseCols;
+
+        public DrawOrder(boolean reverseRows, boolean reverseCols) {
+            this.reverseRows = reverseRows;
+            this.reverseCols = reverseCols;
+
+            if (reverseRows) r = numRows()-1;
+            if (reverseCols) c = numCols()-1;
+        }
+
+        public DrawOrder() {
+            this(Camera.reverseRows, Camera.reverseCols);
+        }
+
+        @Override
+        public boolean hasNext() {
+            return reverseRows ? r >= 0 : r < numRows();
+        }
+
+        @Override
+        public Tile next() {
+            Tile next = map[r][c];
+
+            if (reverseCols) { c--; } else { c++; }
+
+            if ((reverseCols && c < 0) || (!reverseCols && c >= numCols())) {
+                if (reverseCols) { c = numCols()-1; } else { c = 0; }
+                if (reverseRows) { r--; } else { r++; }
+            }
+
+//            System.out.printf("(%d,%d) ", r, c);
+
+            return next;
+        }
+    }
+
+
     /** Claim a tile by a player. **/
     public void claim(Player player, int x, int y){
         map[x][y].setOwner(player);
@@ -107,15 +163,6 @@ public class Battle {
     public void claimAndPlaceUnit(Player player, UnitData unitType, int x, int y){
         map[x][y].setOwner(player);
         map[x][y].setUnit(new Unit(unitType, this, player));
-    }
-
-    /** Run something on each tile. **/
-    public void forEachTile(Consumer<Tile> consumer){
-        for (Tile[] tiles : map) {
-            for (Tile tile : tiles) {
-                consumer.accept(tile);
-            }
-        }
     }
 
     /** Retreive a tile by row and column index. **/

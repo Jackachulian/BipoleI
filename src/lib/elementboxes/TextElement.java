@@ -1,8 +1,6 @@
 package lib.elementboxes;
 
 import java.awt.*;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 
 public class TextElement extends ElementBox {
@@ -34,7 +32,7 @@ public class TextElement extends ElementBox {
         super.draw(g);
         if (text.length == 0) return;
         if (wrap && !wrapCalced) calcWrapText(g);
-        g.setColor(isFocused() ? color : colorFaded);
+        g.setColor(undimmed || focused ? color : colorFaded);
         g.setFont(font);
 
         FontMetrics metrics = g.getFontMetrics(font);

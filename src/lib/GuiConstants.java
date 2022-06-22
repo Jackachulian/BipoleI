@@ -1,21 +1,8 @@
 package lib;
 
-import java.awt.*;
 import java.io.Serializable;
 
 public class GuiConstants implements Serializable {// ======== CONSTANTS
-    // MAP DIMENSIONS
-    public static final double
-            ROW_X_OFFSET = -1.0,
-            ROW_Y_OFFSET = 0.5,
-            COL_X_OFFSET = 1.0,
-            COL_Y_OFFSET = 0.5,
-            DEPTH_Y_OFFSET = 0.5,
-            HEIGHT_Y_OFFSET = -1.0;
-
-    public static final double
-            ROW_SLOPE = ROW_Y_OFFSET / ROW_X_OFFSET,
-            COL_SLOPE = COL_Y_OFFSET / COL_X_OFFSET;
 
 
     // ==== MAP
@@ -34,6 +21,8 @@ public class GuiConstants implements Serializable {// ======== CONSTANTS
     // ==== CAMERA
     public static final boolean EASE_CAMERA = true;
     public static final int CAMERA_SPEED = 250;
+    /** Amount of milliseconds it takes to rotate 90 degrees. **/
+    public static final int ROTATION_SPEED = 5000;
     public static final boolean CAMERA_FOLLOW_CURSOR = true;
     public static final double ZOOM_SCROLL_FACTOR = 0.85;
     public static final double FOLLOW_X_MARGIN = 2.0;

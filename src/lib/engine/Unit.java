@@ -1,5 +1,6 @@
 package lib.engine;
 
+import lib.Camera;
 import lib.Colors;
 import lib.DrawUtils;
 
@@ -88,13 +89,14 @@ public class Unit {
 
     /** Draw this unit on the screen. **/
     public void draw(Graphics g, Tile tile){
-        data.getMesh().draw(g, tile.getPolygon(), tile.getColor(), tile.getFaceColor());
+        data.getMesh().draw(g, tile.getPolygon(), tile.getColor(), tile.getFaceColor(), Camera.zoom);
     }
 
     /** Draw UI elements associated with this unit. **/
-    public void drawUI(Graphics g, Tile tile, double z) {
+    public void drawUI(Graphics g, Tile tile) {
+        // Readiness bar
         if (!ready){
-            DrawUtils.drawBar(g, tile.center.x, tile.center.y + z*0.25, z, readinessPercent(), Colors.READINESS_COLOR);
+            DrawUtils.drawBar(g, tile.center.x, tile.center.y + Camera.zoom*0.25, readinessPercent(), Colors.READINESS_COLOR);
         }
     }
 

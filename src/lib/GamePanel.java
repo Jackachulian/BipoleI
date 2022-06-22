@@ -1,18 +1,17 @@
 package lib;
 
-import lib.elementboxes.ElementBox;
-import lib.elementboxes.PointCounterElement;
-import lib.elementboxes.ShopElement;
-import lib.elementboxes.TextElement;
+import lib.elementboxes.*;
 import lib.engine.Battle;
 import lib.engine.Player;
 import lib.engine.Shop;
 import lib.engine.Tile;
+import lib.geometry.Shape;
 import lib.timing.AnimatedValue;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.Iterator;
 
 public class GamePanel extends ElementPanel {
     // ======== FIELDS
@@ -20,14 +19,6 @@ public class GamePanel extends ElementPanel {
     protected Battle battle;
     /** The player in this client of the battle. **/
     protected Player player;
-
-    // ==== CAMERA
-    /** X position of camera. (Relative to northwestern corner of map) **/
-    protected Number cameraX = 0;
-    /** Y position of camera. (Relative to northwestern corner of map) **/
-    protected Number cameraY = 0;
-    /** Current zoom of camera. **/
-    protected double zoom = 50.0;
 
     // ==== CURSOR
     /** Internal row position of cursor. **/
@@ -50,9 +41,16 @@ public class GamePanel extends ElementPanel {
     /** Element that displays current points. **/
     TextElement pointCounter;
 
+    /** Contains the mesh blueprint being drawn on the screen. Set when mouse pressed if the pressed element is a ShopItemElement. **/
+    ShopItemElement buyItem;
+    /** Polygon for unit being bought to be drawn. Set when mouse dragged if the pressed element is a ShopItemElement. **/
+    Polygon buyPolygon;
+    /** The current row and column the mesh blueprint is being displayed on, and where it will be placed when the mouse is released. **/
+    int buyRow = -1, buyCol = -1;
+
     // ======== CONSTRUCTOR
     public GamePanel(Battle battle, Player player) {
-        super(new ElementBox(){
+        super(new RootElement(){
 
         });
         this.battle = battle;
@@ -72,6 +70,8 @@ public class GamePanel extends ElementPanel {
         addElement(pointCounter);
 
         resizeElements();   // Sets the size of all elements to where they need to be
+        updateMouseOvers(root);     // Initializes set of elements that need to be checked if mouse is over them
+        System.out.println(checkMouseOver);
 
         // Mouse listener setup
         super.addMouseListener(this);
@@ -83,6 +83,9 @@ public class GamePanel extends ElementPanel {
         super.getInputMap().put(KeyStroke.getKeyStroke("DOWN"), "east");
         super.getInputMap().put(KeyStroke.getKeyStroke("LEFT"), "north");
         super.getInputMap().put(KeyStroke.getKeyStroke("RIGHT"), "south");
+
+        super.getInputMap().put(KeyStroke.getKeyStroke("4"), "rotateLeft");
+        super.getInputMap().put(KeyStroke.getKeyStroke("6"), "rotateRight");
 
         super.getInputMap().put(KeyStroke.getKeyStroke("Z"), "interact");
         super.getInputMap().put(KeyStroke.getKeyStroke("X"), "cancel");
@@ -96,41 +99,9 @@ public class GamePanel extends ElementPanel {
 
         super.getActionMap().put("interact", new CursorInteract());
         super.getActionMap().put("cancel", new CursorCancel());
-    }
 
-    // ==== KEY LISTENERS
-    public class CursorMove extends AbstractAction {
-        final int row, col;
-
-        public CursorMove(int row, int col) {
-            this.row = row;
-            this.col = col;
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            if (rootSelected()) {
-                moveCursor(row, col);
-            }
-        }
-    }
-
-    public class CursorInteract extends AbstractAction {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            if (rootSelected()) {
-                mapInteract(cursorRow, cursorCol);
-            } else {
-
-            }
-        }
-    }
-
-    public class CursorCancel extends AbstractAction {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            onCancel();
-        }
+        super.getActionMap().put("rotateLeft", new RotateLeft());
+        super.getActionMap().put("rotateRight", new RotateRight());
     }
 
     // ======== METHODS
@@ -139,28 +110,32 @@ public class GamePanel extends ElementPanel {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
+        Camera.refresh();
+
         // Draw all tiles' bases and unit meshes
-        Tile[][] map = battle.getMap();
-        for (int r=0; r<map.length; r++){
-            for (int c=0; c<map[r].length; c++){
-                map[r][c].drawBase(g, getScreenPos(r, c), zoom);
+        for (Tile tile : battle){
+            tile.drawBase(g, getScreenPos(tile.row, tile.col));
 
-                // Draw cursor if under this tile or the target tile
-                if ((r == cursorRow && c == cursorCol) ||
-                        (GuiConstants.EASE_CURSOR && cursorAnimator.isRunning() && r == Math.max(cursorRow, fromCursorRow) && c == Math.max(cursorCol, fromCursorCol))) {
-                    g.setColor(Color.GREEN);
-                    DrawUtils.drawInsetTile(g, getScreenPos(showCursorRow.doubleValue(), showCursorCol.doubleValue()), zoom, cursorCorners, 0.1);
-                }
-
-                map[r][c].draw(g);
+            // Draw cursor if under the selected tile or the tile the animated cursor is coming from
+            if ((tile.row == cursorRow && tile.col == cursorCol) ||
+                    (GuiConstants.EASE_CURSOR && cursorAnimator.isAnimating() && tile.row == Math.max(cursorRow, fromCursorRow) && tile.col == Math.max(cursorCol, fromCursorCol))) {
+                g.setColor(Color.GREEN);
+                DrawUtils.drawInsetTile(g, getScreenPos(showCursorRow.doubleValue(), showCursorCol.doubleValue()), cursorCorners, 0.1);
             }
         }
 
-        // Draw all units' UI, even if it would be obscured by a tile in front of it
-        for (Tile[] tiles : map) {
-            for (Tile tile : tiles) {
-                tile.drawUI(g, zoom);
-            }
+        // draw blueprint for unit being placed
+        if (buyItem != null) {
+            boolean showInvalid = buyRow != -1 && (buyBlueprintTile().getOwner() != player || buyBlueprintTile().hasUnit());
+            Color lineColor = showInvalid ? Colors.INVALID : player.colorPlace;
+            Color faceColor = showInvalid ? Colors.INVALID_FACE : player.faceColorPlace;
+
+            buyItem.item.getMesh().draw(g, buyPolygon, lineColor, faceColor, Camera.zoom);
+        }
+
+        // Draw all units' UI after bases and units drawn, even if it would be obscured by a tile in front of it
+        for (Tile tile : battle) {
+            tile.drawUI(g);
         }
 
         // Update and draw screen elements
@@ -168,34 +143,21 @@ public class GamePanel extends ElementPanel {
         drawElements(g);
     }
 
-//    package lib.engine;
-//
-//import java.awt.*;
-//
-//    /** Anything that can be drawn with a Graphics object g at (x, y) with z zoom. **/
-//    public interface MapDrawable {
-//        /**
-//         * Draw this object at the given location with the passed graphics object.
-//         * @param g the Graphics instance
-//         * @param x X position of top corner of tile (northwestern corner)
-//         * @param y Y position of top corner of tile (northwestern corner)
-//         * @param z Amount of zoom to draw with (Zoom is equal to the amount of pixels from the top to bottom corner)
-//         */
-//        void draw(Graphics g, double x, double y, double z);
-//
-//        default void draw(Graphics g, Point pos, double z){
-//            draw(g, pos.x, pos.y, z);
-//        }
-//    }
-
-
     // ==== POSITIONING
     /** Get the screen position of a coordinate on the map by row&column&depth and height. **/
     public Point getScreenPos(double row, double col, double depth, double height){
-        double x = zoom*(row*GuiConstants.ROW_X_OFFSET + col*GuiConstants.COL_X_OFFSET)
-                + getWidth()/2.0 - cameraX.doubleValue();
-        double y = zoom*(row*GuiConstants.ROW_Y_OFFSET + col*GuiConstants.COL_Y_OFFSET - depth*GuiConstants.DEPTH_Y_OFFSET + height*GuiConstants.HEIGHT_Y_OFFSET)
-                + getHeight()/2.0 - cameraY.doubleValue();
+        if (Camera.reverseRows) row = battle.numRows() - row - 1;
+        if (Camera.reverseCols) col = battle.numCols() - col - 1;
+        if (Camera.swapAxes) {
+            double temp = row;
+            row = col;
+            col = temp;
+        }
+
+        double x = Camera.zoom *(row* Camera.rowXOffset + col* Camera.colXOffset)
+                + getWidth()/2.0 - Camera.cameraX.doubleValue();
+        double y = Camera.zoom *(row* Camera.rowYOffset + col* Camera.colYOffset - depth* Camera.DEPTH_Y_OFFSET + height* Camera.HEIGHT_Y_OFFSET)
+                + getHeight()/2.0 - Camera.cameraY.doubleValue();
 
         return new Point((int)x, (int)y);
     }
@@ -216,11 +178,10 @@ public class GamePanel extends ElementPanel {
     public Point getGridPos(int x, int y){
         // Iterate over the map in reverse order, so tiles covered up by other tiles aren't selected in place of the one that is actually clicked on the screen.
         // A tile located before another tile in row-major order will never overlap it
-        for (int r = battle.numRows()-1; r >= 0; r--) {
-            for (int c = battle.numCols()-1; c >= 0; c--) {
-                if (battle.getTile(r, c).containsPoint(x, y)) {
-                    return new Point(r, c);
-                }
+        for (Iterator<Tile> it = battle.reverseDrawOrder(); it.hasNext(); ) {
+            Tile tile = it.next();
+            if (tile.containsPoint(x, y)) {
+                return new Point(tile.row, tile.col);
             }
         }
         return null;
@@ -243,21 +204,6 @@ public class GamePanel extends ElementPanel {
     }
 
     @Override
-    public void mousePressed(MouseEvent e) {
-        super.mousePressed(e);
-        if (rootSelected()) {
-            clickPoint = e.getPoint();
-            clickCameraX = cameraX.doubleValue();
-            clickCameraY = cameraY.doubleValue();
-        }
-    }
-
-    @Override
-    public void mouseReleased(MouseEvent e) {
-        super.mouseReleased(e);
-    }
-
-    @Override
     public void mouseEntered(MouseEvent e) {
 
     }
@@ -268,19 +214,75 @@ public class GamePanel extends ElementPanel {
     }
 
     @Override
+    public void mousePressed(MouseEvent e) {
+        super.mousePressed(e);
+        // if root is pressed, get the mouse position for panning
+        if (rootSelected()) {
+            clickPoint = e.getPoint();
+            clickCameraX = Camera.cameraX.doubleValue();
+            clickCameraY = Camera.cameraY.doubleValue();
+        }
+
+        // else; check if the pressed item is a ShopItemElement; if so, save it in field and create a polygon
+        else {
+            if (selectedElement instanceof ShopItemElement) {
+                buyItem = (ShopItemElement) selectedElement;
+
+                buyPolygon = Shape.tilePolygon(e.getX(), (int) (e.getY() - Camera.zoom /2), Camera.zoom);
+            }
+        }
+    }
+
+    @Override
     public void mouseDragged(MouseEvent e) {
-        if (rootPressed()) {
+        super.mouseDragged(e);
+        // if root pressed, pan screen
+        if (rootSelected()) {
             int dx = e.getX() - clickPoint.x;
             int dy = e.getY() - clickPoint.y;
-            cameraX = clickCameraX - dx;
-            cameraY = clickCameraY - dy;
+            Camera.cameraX = clickCameraX - dx;
+            Camera.cameraY = clickCameraY - dy;
         }
+
+        // otherwise, if a shopItemElement is pressed, make a polygon
+        else {
+            if (buyItem != null && !shop.rect.contains(e.getPoint())) {
+                // TODO: check if mouse intersects a tile, draw a virtual unit there with valid/invalid if so, otherwise draw dimmed
+                if (!blueprintMapDisplayed() || !buyBlueprintTile().containsPoint(e.getX(), e.getY())) {
+                    Point gridPos = getGridPos(e.getX(), e.getY());
+                    if (gridPos != null) {
+                        buyRow = gridPos.x;
+                        buyCol = gridPos.y;
+                        buyPolygon = battle.getTile(gridPos.x, gridPos.y).getPolygon();
+                    } else {
+                        buyRow = -1;
+                        buyCol = -1;
+                        buyPolygon = Shape.tilePolygon(e.getX(), (int) (e.getY() - Camera.zoom/2), Camera.zoom);
+                    }
+                }
+            }
+        }
+    }
+
+    public boolean blueprintMapDisplayed() {
+        return buyRow != -1;
+    }
+
+    public Tile buyBlueprintTile() {
+        return battle.getTile(buyRow, buyCol);
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+        super.mouseReleased(e);
+        // TODO: place item if possible
+        buyItem = null;
     }
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
         double scale = Math.pow(GuiConstants.ZOOM_SCROLL_FACTOR, e.getWheelRotation());
-        zoom *= scale;
+        Camera.zoom = Camera.zoom * scale;
 //
 //        double xDistance = e.getX() - cameraX.doubleValue();
 //        double yDistance = e.getY() - cameraY.doubleValue();
@@ -288,8 +290,8 @@ public class GamePanel extends ElementPanel {
 //        cameraX = e.getX() - xDistance*scale;
 //        cameraY = e.getY() - yDistance*scale;
 
-        cameraX = (cameraX.doubleValue() + e.getX() - getWidth()/2.0) * scale - e.getX() + getWidth()/2.0;
-        cameraY = (cameraY.doubleValue() + e.getY() - getHeight()/2.0) * scale - e.getY() + getHeight()/2.0;
+        Camera.cameraX = (Camera.cameraX.doubleValue() + e.getX() - getWidth() / 2.0) * scale - e.getX() + getWidth() / 2.0;
+        Camera.cameraY = (Camera.cameraY.doubleValue() + e.getY() - getHeight() / 2.0) * scale - e.getY() + getHeight() / 2.0;
     }
 
     // ==== CAMERA
@@ -299,11 +301,11 @@ public class GamePanel extends ElementPanel {
         if (GuiConstants.CAMERA_FOLLOW_CURSOR) {
             Point cursorPos = getScreenPos(cursorRow+0.5, cursorCol+0.5, battle.getTile(cursorRow, cursorCol).getHeight());
 
-            int x = cameraX.intValue();
-            int y = cameraY.intValue();
+            int x = Camera.cameraX.intValue();
+            int y = Camera.cameraY.intValue();
 
-            int followXScreen = (int)(zoom*GuiConstants.FOLLOW_X_MARGIN);
-            int followYScreen = (int)(zoom*GuiConstants.FOLLOW_Y_MARGIN);
+            int followXScreen = (int)(Camera.zoom *GuiConstants.FOLLOW_X_MARGIN);
+            int followYScreen = (int)(Camera.zoom *GuiConstants.FOLLOW_Y_MARGIN);
 
             boolean cameraMoved = false;
 
@@ -325,11 +327,11 @@ public class GamePanel extends ElementPanel {
 
     public void moveCameraToScreenPoint(int x, int y){
         if (GuiConstants.EASE_CAMERA){
-            cameraX = new AnimatedValue(GuiConstants.CAMERA_SPEED, cameraX.doubleValue(), x);
-            cameraY = new AnimatedValue(GuiConstants.CAMERA_SPEED, cameraY.doubleValue(), y);
+            Camera.cameraX = new AnimatedValue(GuiConstants.CAMERA_SPEED, Camera.cameraX.doubleValue(), x);
+            Camera.cameraY = new AnimatedValue(GuiConstants.CAMERA_SPEED, Camera.cameraY.doubleValue(), y);
         } else {
-            cameraX = x;
-            cameraY = y;
+            Camera.cameraX = x;
+            Camera.cameraY = y;
         }
     }
 
@@ -338,7 +340,7 @@ public class GamePanel extends ElementPanel {
         if (row < 0 || row >= battle.numRows() || col < 0 || col >= battle.numCols()) return;
         battle.getTile(cursorRow, cursorCol).onCursorUnhover();
 
-        if (!cursorAnimator.isRunning()) {
+        if (!cursorAnimator.isAnimating()) {
             fromCursorRow = cursorRow;
             fromCursorCol = cursorCol;
         }
@@ -376,15 +378,77 @@ public class GamePanel extends ElementPanel {
      * @param row tile's row (west-east)
      * @param col tile's column (north-south)
      */
-    public void mapInteract(int row, int col){
+    public void mapInteract(int row, int col) {
         Tile tile = battle.getTile(row, col);
         System.out.println("interacted with "+tile);
 
-        if (tile.isClaimed()){
-            // do claimed stuff...?
-        } else {
+        // If tile is claimed
+        if (tile.isClaimed()) {
+            // If there is a unit here, TODO: open its menu
+            if (tile.hasUnit()) {
+
+            }
+
+            // If there is no unit, focus the shop window
+            else {
+                focusElement(shop);
+            }
+        }
+
+        // If not claimed, try to contest it
+        else {
             tile.contest(player);
         }
     }
 
+    // ==== KEY LISTENERS
+    public class CursorMove extends AbstractAction {
+        final int row, col;
+
+        public CursorMove(int row, int col) {
+            this.row = row;
+            this.col = col;
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (rootSelected()) {
+                moveCursor(row, col);
+            } else {
+                onMove(row, col);
+            }
+        }
+    }
+
+    public class CursorInteract extends AbstractAction {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (rootSelected()) {
+                mapInteract(cursorRow, cursorCol);
+            } else {
+                onInteract();
+            }
+        }
+    }
+
+    public class CursorCancel extends AbstractAction {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            onCancel();
+        }
+    }
+
+    public static class RotateLeft extends AbstractAction {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            Camera.rotate(Math.toRadians(90));
+        }
+    }
+
+    public static class RotateRight extends AbstractAction {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            Camera.rotate(Math.toRadians(-90));
+        }
+    }
 }

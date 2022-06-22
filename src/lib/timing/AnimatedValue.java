@@ -10,10 +10,10 @@ public class AnimatedValue extends Number {
         this.start = start;
         this.end = end;
     }
-    public AnimatedValue(TimingFunction function, int duration, double start, double end){
+    public AnimatedValue(TimingFunction function, long duration, double start, double end){
         this(new Animation(function, duration), start, end);
     }
-    public AnimatedValue(int duration, double start, double end){
+    public AnimatedValue(long duration, double start, double end){
         this(new Animation(duration), start, end);
     }
 
@@ -49,7 +49,7 @@ public class AnimatedValue extends Number {
         return start;
     }
 
-    public boolean isRunning() {
+    public boolean isAnimating() {
         return animation.getDuration() > 0 && !animation.isFinished();
     }
 }

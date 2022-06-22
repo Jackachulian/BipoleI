@@ -15,8 +15,8 @@ public class ShopItemElement extends ElementBox {
     public static final int HEIGHT = WIDTH+12;
     public static final double SHAPE_ZOOM = WIDTH*0.8;
 
-    private final Shop shop;
-    private final Buyable item;
+    public final Shop shop;
+    public final Buyable item;
     private Polygon unitDrawPoly;
     private final TextElement costText;
 
@@ -28,7 +28,10 @@ public class ShopItemElement extends ElementBox {
         setMargin(MARGIN);
         setPadding(PADDING);
         setBorder(true);
+
         selectable = true;
+        hoverable = true;
+        hoverHighlight = true;
 
         costText = new TextElement(item.buyCost()+"");
         costText.font = TextElement.GAME_FONT_SMALL;
@@ -48,8 +51,8 @@ public class ShopItemElement extends ElementBox {
         item.getMesh().draw(g,
                 unitDrawPoly,
                 canBuy ? player.color : Color.GRAY,
-                canBuy ? player.faceColor : Color.BLACK);
-
+                canBuy ? player.faceColor : Color.BLACK,
+                WIDTH);
         costText.draw(g);
     }
 
@@ -58,4 +61,6 @@ public class ShopItemElement extends ElementBox {
         super.resize(parent, offset);
         unitDrawPoly = Shape.tilePolygon(rect.x + rect.width/2, rect.y + rect.width/2 - 10, SHAPE_ZOOM);
     }
+
+
 }

@@ -1,7 +1,7 @@
 package lib.geometry;
 
+import lib.Camera;
 import lib.DrawUtils;
-import lib.GuiConstants;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -32,7 +32,7 @@ public class Shape {
      * @param segmentColor The color to draw segments on this shape.
      * @param faceColor The color to draw faces on this shape.
      */
-    public void draw(Graphics g, Polygon polygon, Color segmentColor, Color faceColor){
+    public void draw(Graphics g, Polygon polygon, Color segmentColor, Color faceColor, double zoom){
         // Initialize points array
         Point[] points = new Point[polygon.npoints];
         for (int i=0; i<points.length; i++){
@@ -44,7 +44,7 @@ public class Shape {
         for (Face face : faces){
             Polygon facePolygon = new Polygon();
             for (Vertex v : face.vertices) {
-                Point pos = vertPos(points, v);
+                Point pos = vertPos(points, v, zoom);
                 facePolygon.addPoint(pos.x, pos.y);
             }
             g.fillPolygon(facePolygon);
@@ -52,52 +52,36 @@ public class Shape {
 
         // 2. draw normal segments
         g.setColor(segmentColor);
-        drawSegments(g, points, segments);
+        drawSegments(g, points, segments, zoom);
 
         // 3. draw culled segments
         g.setColor(faceColor);
-        drawSegments(g, points, culledSegments);
+        drawSegments(g, points, culledSegments, zoom);
 
         // 3. draw child shapes
         for (Shape shape : children){
-            shape.draw(g, polygon, segmentColor, faceColor);
+            shape.draw(g, polygon, segmentColor, faceColor, zoom);
         }
     }
 
-    private void drawSegments(Graphics g, Point[] points, List<Segment> segments){
+    private void drawSegments(Graphics g, Point[] points, List<Segment> segments, double zoom){
         //NW, NE, SE, SW
         for (Segment segment : segments){
-            Point start = vertPos(points, segment.start);
-            Point end = vertPos(points, segment.end);
+            Point start = vertPos(points, segment.start, zoom);
+            Point end = vertPos(points, segment.end, zoom);
             g.drawLine(start.x, start.y, end.x, end.y);
         }
     }
 
     /** Get the screen position of a vertex based on its base tile's polygon's points. **/
-    private Point vertPos(Point[] points, Vertex vertex) {
+    private Point vertPos(Point[] points, Vertex vertex, double zoom) {
         Point nw = points[0], sw = points[1], se = points[2], ne = points[3];
 
         // Get the point on the base
         Point wr = DrawUtils.lerp(nw, sw, vertex.x+0.5);
         Point er = DrawUtils.lerp(ne, se, vertex.x+0.5);
         Point p = DrawUtils.lerp(wr, er, vertex.y+0.5);
-
-        // If height is greater than 0, calculate the slopes to determine which way x&y are angled
-        if (vertex.z > 0) {
-            // Calculate slope offset ratios between row/column offsets and polygon row/column offsets (with respect to height)
-            double
-                    rdx = ne.x-nw.x,
-                    rdy = ne.y-nw.y,
-                    cdx = sw.x-nw.x,
-                    cdy = sw.y-nw.y;
-
-            double rowHeightSlope = rdy/rdx - GuiConstants.ROW_SLOPE - 1;
-            double colHeightSlope = cdy/cdx - GuiConstants.COL_SLOPE + 1;
-//            double heightMult = 1 - (rowHeightSlope*rowHeightSlope - colHeightSlope*colHeightSlope);
-            double height = (int)(cdx * (GuiConstants.HEIGHT_Y_OFFSET/GuiConstants.COL_X_OFFSET) * -vertex.z);
-
-            p.translate((int)(-height*(rowHeightSlope + colHeightSlope)), (int)height);
-        }
+        p.y += zoom * vertex.z * Camera.HEIGHT_Y_OFFSET;
 
         return p;
     }
@@ -128,12 +112,12 @@ public class Shape {
     /** Create a polygon at the given screen coordinates. The northwestern corner of the tile will be located at the passed coordinates. **/
     public static Polygon tilePolygon(int x, int y, double z) {
         int
-                nex = (int)(x + z* GuiConstants.ROW_X_OFFSET),
-                swx = (int)(x + z* GuiConstants.COL_X_OFFSET),
-                sex = (int)(x + z*(GuiConstants.ROW_X_OFFSET + GuiConstants.COL_X_OFFSET)), // ayo???
-                ney = (int)(y + z * (GuiConstants.ROW_Y_OFFSET)),
-                swy = (int)(y + z * GuiConstants.COL_Y_OFFSET),
-                sey = (int)(y + z*(GuiConstants.ROW_Y_OFFSET + GuiConstants.COL_Y_OFFSET));
+                nex = (int)(x + z* Camera.rowXOffset),
+                swx = (int)(x + z* Camera.colXOffset),
+                sex = (int)(x + z*(Camera.rowXOffset + Camera.colXOffset)), // ayo???
+                ney = (int)(y + z * (Camera.rowYOffset)),
+                swy = (int)(y + z * Camera.colYOffset),
+                sey = (int)(y + z*(Camera.rowYOffset + Camera.colYOffset));
 
         Polygon polygon = new Polygon();
         polygon.addPoint(x, y);

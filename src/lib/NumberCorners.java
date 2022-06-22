@@ -49,16 +49,16 @@ public class NumberCorners {
     }
 
     public void set(Corners corners) {
-        this.nw = corners.nw;
-        this.sw = corners.sw;
-        this.se = corners.se;
-        this.ne = corners.ne;
+        this.nw = corners.nw();
+        this.sw = corners.sw();
+        this.se = corners.se();
+        this.ne = corners.ne();
     }
 
     public void easeTo(Corners corners){
-        nw = new AnimatedValue(GuiConstants.CURSOR_SPEED, nw.doubleValue(), corners.nw);
-        sw = new AnimatedValue(GuiConstants.CURSOR_SPEED, sw.doubleValue(), corners.sw);
-        se = new AnimatedValue(GuiConstants.CURSOR_SPEED, se.doubleValue(), corners.se);
-        ne = new AnimatedValue(GuiConstants.CURSOR_SPEED, ne.doubleValue(), corners.ne);
+        nw = new AnimatedValue(GuiConstants.CURSOR_SPEED, nw.doubleValue(), corners.nw());
+        sw = new AnimatedValue(GuiConstants.CURSOR_SPEED, sw.doubleValue(), corners.sw());
+        se = new AnimatedValue(GuiConstants.CURSOR_SPEED, se.doubleValue(), corners.se());
+        ne = new AnimatedValue(GuiConstants.CURSOR_SPEED, ne.doubleValue(), corners.ne());
     }
 }
