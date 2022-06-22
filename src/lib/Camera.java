@@ -30,6 +30,11 @@ public class Camera implements Serializable {
      **/
     public static double zoom = 70.0;
 
+    /** Current row position of origin of rotation. **/
+    public static double originRow;
+    /** Current col position of origin of rotation. **/
+    public static double originCol;
+
     /** Current view angle of camera (in radians). Initially 45 degrees (pi/4). **/
     public static AnimatedValue angle = new AnimatedValue(Math.PI/4);
 
@@ -62,8 +67,8 @@ public class Camera implements Serializable {
 
         double angle = Camera.angle.doubleValue();
         System.out.println(Math.toDegrees(angle));
-        reverseRows = Math.cos(angle) < 0;
-        reverseCols = Math.sin(angle) < 0;
+        reverseRows = Math.sin(angle) < 0;
+        reverseCols = Math.cos(angle) < 0;
         swapAxes = Math.tan(angle) < 0;
 
 
@@ -102,16 +107,18 @@ public class Camera implements Serializable {
     }
 
     /** Animate towards a certain angle (in radians). **/
-    public static void rotateTo(double angle) {
+    public static void rotateToAngle(double row, double col, double angle) {
         targetAngle = angle;
+        originRow = row;
+        originCol = col;
         double speedFactor = (Math.abs(targetAngle - Camera.angle.doubleValue())/(Math.PI/2));
         long time = (long)(GuiConstants.ROTATION_SPEED * speedFactor);
         Camera.angle = new AnimatedValue(TimingFunction.LINEAR, time, Camera.angle.doubleValue(), targetAngle);
         needsRefresh = true;
     }
 
-    /** Rotate by a certain angle measurement (in radians). **/
-    public static void rotate(double angle) {
-        rotateTo(targetAngle + angle);
+    /** Rotate by a certain angle measurement around the passed point (in radians). **/
+    public static void rotate(double row, double col, double angle) {
+        rotateToAngle(row, col, targetAngle + angle);
     }
 }

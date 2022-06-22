@@ -79,10 +79,10 @@ public class GamePanel extends ElementPanel {
         super.addMouseWheelListener(this);
 
         // Input mapping
-        super.getInputMap().put(KeyStroke.getKeyStroke("UP"), "west");
-        super.getInputMap().put(KeyStroke.getKeyStroke("DOWN"), "east");
-        super.getInputMap().put(KeyStroke.getKeyStroke("LEFT"), "north");
-        super.getInputMap().put(KeyStroke.getKeyStroke("RIGHT"), "south");
+        super.getInputMap().put(KeyStroke.getKeyStroke("UP"), "north");
+        super.getInputMap().put(KeyStroke.getKeyStroke("DOWN"), "south");
+        super.getInputMap().put(KeyStroke.getKeyStroke("LEFT"), "west");
+        super.getInputMap().put(KeyStroke.getKeyStroke("RIGHT"), "east");
 
         super.getInputMap().put(KeyStroke.getKeyStroke("4"), "rotateLeft");
         super.getInputMap().put(KeyStroke.getKeyStroke("6"), "rotateRight");
@@ -438,17 +438,19 @@ public class GamePanel extends ElementPanel {
         }
     }
 
-    public static class RotateLeft extends AbstractAction {
+    public class RotateLeft extends AbstractAction {
         @Override
         public void actionPerformed(ActionEvent e) {
-            Camera.rotate(Math.toRadians(90));
+            Point cursorPos = getScreenPos(cursorRow+0.5, cursorCol+0.5);
+            Camera.rotate(cursorPos.x, cursorPos.y, Math.toRadians(90));
         }
     }
 
-    public static class RotateRight extends AbstractAction {
+    public class RotateRight extends AbstractAction {
         @Override
         public void actionPerformed(ActionEvent e) {
-            Camera.rotate(Math.toRadians(-90));
+            Point cursorPos = getScreenPos(cursorRow+0.5, cursorCol+0.5);
+            Camera.rotate(cursorPos.x, cursorPos.y, Math.toRadians(-90));
         }
     }
 }

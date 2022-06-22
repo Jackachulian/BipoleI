@@ -133,15 +133,18 @@ public class Tile {
                 lx = (int)(x + Camera.zoom * Camera.rowXOffset),
                 rx = (int)(x + Camera.zoom * Camera.colXOffset),
                 fx = (int)(x + Camera.zoom * (Camera.rowXOffset + Camera.colXOffset)),
+
                 by = (int)(y - Camera.zoom * Camera.DEPTH_Y_OFFSET*base.back()),
                 ly = (int)(y + Camera.zoom * (Camera.rowYOffset - Camera.DEPTH_Y_OFFSET*base.left())),
                 ry = (int)(y + Camera.zoom * (Camera.colYOffset - Camera.DEPTH_Y_OFFSET*base.right())),
                 fy = (int)(y + Camera.zoom * (Camera.rowYOffset + Camera.colYOffset - Camera.DEPTH_Y_OFFSET*base.front())),
-                ray = (int)(y + Camera.zoom * (Camera.colYOffset - Camera.DEPTH_Y_OFFSET*around.right())),
+
                 lay = (int)(y + Camera.zoom * (Camera.rowYOffset - Camera.DEPTH_Y_OFFSET*around.left())),
+                ray = (int)(y + Camera.zoom * (Camera.colYOffset - Camera.DEPTH_Y_OFFSET*around.right())),
                 fay = (int)(y + Camera.zoom * (Camera.rowYOffset + Camera.colYOffset - Camera.DEPTH_Y_OFFSET*around.front())),
-                rly = (int)(y + Camera.zoom * (Camera.rowYOffset - Camera.DEPTH_Y_OFFSET*lowest.right())),
-                lly = (int)(y + Camera.zoom * (Camera.colYOffset - Camera.DEPTH_Y_OFFSET*lowest.left())),
+
+                lly = (int)(y + Camera.zoom * (Camera.rowYOffset - Camera.DEPTH_Y_OFFSET*lowest.left())),
+                rly = (int)(y + Camera.zoom * (Camera.colYOffset - Camera.DEPTH_Y_OFFSET*lowest.right())),
                 fly = (int)(y + Camera.zoom * (Camera.rowYOffset + Camera.colYOffset - Camera.DEPTH_Y_OFFSET*lowest.front()));
 
         // Reset polygon and add tile corner points
@@ -179,13 +182,13 @@ public class Tile {
         if (base.front() > lowest.front()) {
             g.setColor(getLandColor());
             g.fillPolygon(leftFace);
-            g.setColor(Color.CYAN);
-            g.drawPolygon(leftFace);
+//            g.setColor(Color.CYAN);
+//            g.drawPolygon(leftFace);
 
             g.setColor(getLandColor());
             g.fillPolygon(rightFace);
-            g.setColor(Color.MAGENTA);
-            g.drawPolygon(rightFace);
+//            g.setColor(Color.MAGENTA);
+//            g.drawPolygon(rightFace);
         }
 
         // If being contested, draw moving diagonal lines
@@ -238,14 +241,14 @@ public class Tile {
             g.drawLine(lx, lly, fx, fly);
         }
 
-        g.setColor(Color.GREEN);
-        g.fillRect(bx-2, by-2, 4, 4);
-        g.setColor(Color.CYAN);
-        g.fillRect(lx-2, ly-2, 4, 4);
-        g.setColor(Color.MAGENTA);
-        g.fillRect(rx-2, ry-2, 4, 4);
-        g.setColor(Color.YELLOW);
-        g.fillRect(fx-2, fy-2, 4, 4);
+//        g.setColor(Color.GREEN);
+//        g.fillRect(bx-2, by-2, 4, 4);
+//        g.setColor(Color.CYAN);
+//        g.fillRect(lx-2, ly-2, 4, 4);
+//        g.setColor(Color.MAGENTA);
+//        g.fillRect(rx-2, ry-2, 4, 4);
+//        g.setColor(Color.YELLOW);
+//        g.fillRect(fx-2, fy-2, 4, 4);
     }
 
     /** Determine if a given position on the screen is within this tile on the screen with the given zoom (including side faces). **/
