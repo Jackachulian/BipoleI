@@ -10,7 +10,7 @@ import java.util.List;
 /** Contains all data that units use. **/
 public abstract class UnitData implements Buyable {
     /** Display name of this unit. **/
-    public final String name;
+    private final String name;
     /** Base cost to buy this unit.
      * A portion is retrieved when sold,
      * and enemies get a portion of this value when destroying this tile. **/
@@ -26,6 +26,8 @@ public abstract class UnitData implements Buyable {
     private boolean mustAutoAct;
     /** If this type of unit auto acts by default when placed. **/
     private boolean defaultAutoAct;
+    /** If this unit can be sold. **/
+    private boolean sellable;
 
     /** All actions that this type of unit can use as their action. **/
     private final ArrayList<Action> actions;
@@ -87,5 +89,13 @@ public abstract class UnitData implements Buyable {
 
     public void setDefaultAutoAct(boolean defaultAutoAct) {
         this.defaultAutoAct = defaultAutoAct;
+    }
+
+    public boolean isSellable() {
+        return sellable;
+    }
+
+    public void setSellable(boolean sellable) {
+        this.sellable = sellable;
     }
 }

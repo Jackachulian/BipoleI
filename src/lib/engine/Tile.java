@@ -35,8 +35,8 @@ public class Tile {
 
     /** The type of tile this is. 0=flat, 1=north slope, 2=west slope, 3=south slope, 4=east slope. **/
     private final int type;
-    /** Height of this tile. Base is 0. **/
-    private final int height;
+    /** Depth of this tile. Base is 0. **/
+    private final int depth;
     /** Corners of this tile's base (Not the corners surrounding it). Used for gameplay and drawing. **/
     private final Corners base;
     /** Corners of the next lowest tiles around this tile when connected to other tiles. **/
@@ -77,11 +77,11 @@ public class Tile {
 
         type = rng.nextDouble() > 0.5 ? rng.nextInt(5) : 0;
 
-        height = 21 - row - col*2 + (rng.nextDouble() > 0.25 ? 1 : 0);
+        depth = 21 - row - col*2 + (rng.nextDouble() > 0.25 ? 1 : 0);
 //        height = rng.nextInt(8);
 
         int[] tc = TYPE_CORNERS[type];
-        base = new Corners(height+tc[0], height+tc[1], height+tc[2], height+tc[3]);
+        base = new Corners(depth +tc[0], depth +tc[1], depth +tc[2], depth +tc[3]);
         // These two Corners fields will be updated by the Battle's constructor shortly after this is created
         around = new Corners();
         lowest = new Corners();
@@ -94,12 +94,8 @@ public class Tile {
     // ==== CONTESTING
     /** Contest this tile by a player. **/
     public void contest(Player contestor){
-        // If the player is already contesting this tile, return
-        if (this.contestor == contestor) return;
-        // If there is not an adjacent claimed tile in the battle, return **/
-        if (!battle.isAdjacentClaimedTile(contestor, row, col)) return;
         // Subtract points. If contestor does not have enough points, return
-        if (!contestor.subtractPoints(contestValue+1)) return;
+        if (!contestor.subtractPoints(contestCost())) return;
 
         // Increment value by 1 and set the new contestor
         contestValue += 1;
@@ -113,6 +109,21 @@ public class Tile {
         }
     }
 
+    /** If the player can contest this tile. **/
+    public boolean contestable(Player player) {
+        // If the player is already contesting this tile, return false
+        if (contestor == player) return false;
+        // If there is not an adjacent claimed tile in the battle, return false **/
+        if (!battle.isAdjacentClaimedTile(player, row, col)) return false;
+        // Return true only if the player has enough points
+        return player.getPoints() >= contestCost();
+    }
+
+    /** The current cost to contest this tile. **/
+    public int contestCost() {
+        return contestValue+1;
+    }
+
     public void onCapture(){
         contestTimer.stop();
         owner = contestor;
@@ -120,8 +131,12 @@ public class Tile {
         contestValue = 0;
     }
 
+    public void placeUnit(UnitData unitType) {
+        setUnit(new Unit(unitType, battle, owner));
+    }
+
     // ==== DISPLAYING
-    public void draw(Graphics g) {
+    public void drawUnit(Graphics g) {
         if (hasUnit()) unit.draw(g, this);
     }
 
@@ -171,25 +186,23 @@ public class Tile {
             rightFace.addPoint(fx, fy);
         }
         synchronized (center) {
-            center.move(bx, DrawUtils.lerp(by, fy, 0.5));
+            center.move(DrawUtils.lerp(bx, fx, 0.5), DrawUtils.lerp(by, fy, 0.5));
         }
 
         // Fill base
         g.setColor(getLandColor());
         g.fillPolygon(polygon);
 
-        // If the southeastern corner is lower, south and east wall faces are always needed
-        if (base.front() > lowest.front()) {
+        if (base.front() > lowest.front() || base.left() > lowest.left()) {
             g.setColor(getLandColor());
             g.fillPolygon(leftFace);
-//            g.setColor(Color.CYAN);
-//            g.drawPolygon(leftFace);
+        }
 
+        if (base.front() > lowest.front() || base.right() > lowest.right()) {
             g.setColor(getLandColor());
             g.fillPolygon(rightFace);
-//            g.setColor(Color.MAGENTA);
-//            g.drawPolygon(rightFace);
         }
+
 
         // If being contested, draw moving diagonal lines
         if (contestor != null) {
@@ -286,6 +299,10 @@ public class Tile {
         displayBrightness = new AnimatedValue(speed, displayBrightness.doubleValue(), brightness);
     }
 
+    public String displayName() {
+        return hasUnit() ? unit.getData().displayName() : "Empty Tile";
+    }
+
     /** Get the line color of this unit after factoring in brightness. **/
     public Color getColor(){
         return brightenColor(owner.color, 1);
@@ -331,6 +348,10 @@ public class Tile {
 
     public boolean hasUnit() {return unit != null;}
 
+    public boolean ownedBy(Player player) {
+        return owner == player;
+    }
+
     // ==== ACCESSORS
 
     public Battle getBattle() {
@@ -351,11 +372,19 @@ public class Tile {
 
     public void setUnit(Unit unit) {
         this.unit = unit;
+        unit.setTile(this);
         unit.resetCooldown();
     }
 
-    public int getHeight() {
-        return height;
+    /** Remove the unit from this tile and return it. **/
+    public Unit removeUnit() {
+        Unit tempUnit = unit;
+        unit = null;
+        return tempUnit;
+    }
+
+    public int getDepth() {
+        return depth;
     }
 
     public Corners getBase() {

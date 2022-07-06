@@ -45,6 +45,7 @@ public class Player {
         points += amount;
     }
 
+    /** Subtract points from this player. If they had enough points, return true. If not, do not subtract any points. **/
     public boolean subtractPoints(int amount){
         if (amount > points) return false;
         points -= amount;

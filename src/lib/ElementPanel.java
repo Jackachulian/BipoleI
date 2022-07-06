@@ -45,9 +45,7 @@ public abstract class ElementPanel extends JPanel implements MouseInputListener,
     public void resizeElements(ElementBox container){
         container.rect.width = getWidth();
         container.rect.height = getHeight();
-        for (ElementBox child : container.getChildren()){
-            child.resize(container, 0);
-        }
+        container.resizeChildren();
     }
 
     /** Resize ALL components in this panel. **/
@@ -164,7 +162,7 @@ public abstract class ElementPanel extends JPanel implements MouseInputListener,
         selectedElement.unselect();
         selectedElement = element;
         selectedElement.select();
-        System.out.println("selected "+selectedElement);
+//        System.out.println("selected "+selectedElement);
     }
 
     /** Returns true if a new element was hovered. **/
@@ -173,7 +171,7 @@ public abstract class ElementPanel extends JPanel implements MouseInputListener,
         hoveredElement.unhover();
         hoveredElement = element;
         hoveredElement.hover();
-        System.out.println("hovered "+hoveredElement);
+//        System.out.println("hovered "+hoveredElement);
     }
 
     public void focusElement(ElementBox element) {
@@ -181,7 +179,7 @@ public abstract class ElementPanel extends JPanel implements MouseInputListener,
         focusedElement.unfocus();
         focusedElement = element;
         focusedElement.focus();
-        System.out.println("focused "+focusedElement);
+//        System.out.println("focused "+focusedElement);
 
         ElementBox newSelection = focusedElement.verifySelection();
         if (newSelection != null) selectElement(newSelection);

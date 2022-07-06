@@ -17,14 +17,21 @@ public class TextElement extends ElementBox {
     public Font font = GAME_FONT;
     public boolean wrap;
     public boolean wrapCalced;
+    public Alignment textXAlign = Alignment.CENTER;
+    public Alignment textYAlign = Alignment.CENTER;
+
+    public enum Alignment {
+        START, CENTER, END
+    }
 
     public TextElement(String... text){
         super();
         this.text = text;
+        bg = false;
     }
 
     public TextElement() {
-        super();
+        this(new String[0]);
     }
 
     @Override
@@ -40,8 +47,24 @@ public class TextElement extends ElementBox {
         for (int i=0; i<text.length; i++){
             String line = text[i];
 
-            int strX = rect.x + (rect.width - metrics.stringWidth(line)) / 2;
-            int strY = rect.y + (rect.height - lineHeight*(text.length-1-i)*2 + metrics.getAscent()) / 2;
+            int strX;
+            if (textXAlign == Alignment.START) {
+                strX = rect.x;
+            } else if (textXAlign == Alignment.END) {
+                strX = rect.y + rect.width - metrics.stringWidth(line);
+            } else {
+                strX = rect.x + (rect.width - metrics.stringWidth(line)) / 2;
+            }
+
+
+            int strY;
+            if (textYAlign == Alignment.START) {
+                strY = rect.y;
+            } else if (textYAlign == Alignment.END) {
+                strY = rect.y + rect.height - lineHeight*(text.length-1-i)*2 - metrics.getAscent();
+            } else {
+                strY = rect.y + (rect.height - lineHeight*(text.length-1-i)*2 + metrics.getAscent()) / 2;
+            }
 
             g.drawString(line, strX, strY);
         }

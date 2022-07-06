@@ -46,10 +46,10 @@ public class DrawUtils {
                 bnex = (x + Camera.zoom * Camera.rowXOffset),
                 bswx = (x + Camera.zoom * Camera.colXOffset),
                 bsex = (x + Camera.zoom * ( Camera.rowXOffset + Camera.colXOffset)),
-                bnwy = (y - Camera.zoom * Camera.DEPTH_Y_OFFSET*corners.nw()),
-                bney = (y + Camera.zoom * (Camera.rowYOffset - Camera.DEPTH_Y_OFFSET*corners.ne())),
-                bswy = (y + Camera.zoom * (Camera.colYOffset - Camera.DEPTH_Y_OFFSET*corners.sw())),
-                bsey = (y + Camera.zoom * (Camera.rowYOffset + Camera.colYOffset - Camera.DEPTH_Y_OFFSET*corners.se()));
+                bnwy = (y - Camera.zoom * Camera.DEPTH_Y_OFFSET*corners.back()),
+                bney = (y + Camera.zoom * (Camera.rowYOffset - Camera.DEPTH_Y_OFFSET*corners.left())),
+                bswy = (y + Camera.zoom * (Camera.colYOffset - Camera.DEPTH_Y_OFFSET*corners.right())),
+                bsey = (y + Camera.zoom * (Camera.rowYOffset + Camera.colYOffset - Camera.DEPTH_Y_OFFSET*corners.front()));
 
         int
                 nwx = (int)(bnwx + inset*(bsex-bnwx)),

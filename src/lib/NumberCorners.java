@@ -5,60 +5,52 @@ import lib.timing.AnimatedValue;
 
 /** Same as lib.engine.Corners but with Numbers and used only for display instead of game logic **/
 public class NumberCorners {
-    public Number nw, sw, se, ne;
+    /** All four diangonal cardinal direction corners. [NW, SW, SE, NE] **/
+    public Number[] values;
 
-    public NumberCorners(Number nw, Number sw, Number se, Number ne) {
-        this.nw = nw;
-        this.sw = sw;
-        this.se = se;
-        this.ne = ne;
-    }
-
-    public NumberCorners(NumberCorners other){
-        this.nw = other.nw;
-        this.sw = other.sw;
-        this.se = other.se;
-        this.ne = other.ne;
+    public NumberCorners(int nw, int sw, int se, int ne) {
+        values = new Number[]{nw, sw, se, ne};
     }
 
     public NumberCorners() {
-        nw = -1;
-        sw = -1;
-        se = -1;
-        ne = -1;
+        this(-1, -1, -1, -1);
     }
 
-    public double nw() {
-        return nw.doubleValue();
-    }
-    public double sw() {
-        return sw.doubleValue();
-    }
-    public double se() {
-        return se.doubleValue();
-    }
-    public double ne() {
-        return ne.doubleValue();
+    private Number indexedCorner(int index) {
+        return values[(index + Camera.cornerShift) % 4];
     }
 
-    public void set(Number nw, Number sw, Number se, Number ne) {
-        this.nw = nw;
-        this.sw = sw;
-        this.se = se;
-        this.ne = ne;
-    }
+    /** Return the back corner according to current rotation. (NW when facing 45 degrees.) **/
+    public double back() { return indexedCorner(0).doubleValue(); }
+    /** Return the left corner according to current rotation. (NE when facing 45 degrees.) **/
+    public double left() { return indexedCorner(1).doubleValue(); }
+    /** Return the back corner according to current rotation. (SE when facing 45 degrees.) **/
+    public double front() { return indexedCorner(2).doubleValue(); }
+    /** Return the right corner according to current rotation. (SW when facing 45 degrees.) **/
+    public double right() { return indexedCorner(3).doubleValue(); }
+
+    public double nw() { return values[0].doubleValue(); }
+    public double ne() { return values[1].doubleValue(); }
+    public double se() { return values[2].doubleValue(); }
+    public double sw() { return values[3].doubleValue(); }
+
+    public void setNw(int value) { values[0] = value; }
+    public void setNe(int value) { values[1] = value; }
+    public void setSe(int value) { values[2] = value; }
+    public void setSw(int value) { values[3] = value; }
+
+    private static final Corners FLAT = new Corners(0, 0, 0, 0);
+    public static Corners flatCorners() {return FLAT;}
 
     public void set(Corners corners) {
-        this.nw = corners.nw();
-        this.sw = corners.sw();
-        this.se = corners.se();
-        this.ne = corners.ne();
+        for (int i=0; i<4; i++) {
+            values[i] = corners.values[i];
+        }
     }
 
     public void easeTo(Corners corners){
-        nw = new AnimatedValue(GuiConstants.CURSOR_SPEED, nw.doubleValue(), corners.nw());
-        sw = new AnimatedValue(GuiConstants.CURSOR_SPEED, sw.doubleValue(), corners.sw());
-        se = new AnimatedValue(GuiConstants.CURSOR_SPEED, se.doubleValue(), corners.se());
-        ne = new AnimatedValue(GuiConstants.CURSOR_SPEED, ne.doubleValue(), corners.ne());
+        for (int i=0; i<4; i++) {
+            values[i] = new AnimatedValue(GuiConstants.CURSOR_SPEED, values[i].doubleValue(), corners.values[i]);
+        }
     }
 }

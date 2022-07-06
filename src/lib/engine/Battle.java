@@ -143,6 +143,17 @@ public class Battle implements Iterable<Tile> {
         map[x][y].setOwner(player);
     }
 
+    /** Place a unit on the given tile. **/
+    public void placeUnit(Player player, UnitData unitType, int x, int y) {
+        map[x][y].setUnit(new Unit(unitType, this, player));
+    }
+
+    /** Claim a tile and place a new unit of the given type. **/
+    public void claimAndPlaceUnit(Player player, UnitData unitType, int x, int y){
+        claim(player, x, y);
+        placeUnit(player, unitType, x, y);
+    }
+
     /** Returns true if there is a tile adjacent to the passed coordinated owned by the player. **/
     public boolean isAdjacentClaimedTile(Player owner, int row, int col){
         return isOwnedByPlayer(owner, row-1, col)
@@ -157,12 +168,6 @@ public class Battle implements Iterable<Tile> {
     /** Returns true if the passed coordinate is within the bounds of the map. **/
     public boolean withinBounds(int row, int col){
         return row >= 0 && row < map.length && col >= 0 && col < map[0].length;
-    }
-
-    /** Claim a tile and place a new unit of the given type. **/
-    public void claimAndPlaceUnit(Player player, UnitData unitType, int x, int y){
-        map[x][y].setOwner(player);
-        map[x][y].setUnit(new Unit(unitType, this, player));
     }
 
     /** Retreive a tile by row and column index. **/

@@ -2,6 +2,8 @@ package lib.geometry;
 
 import lib.Camera;
 import lib.DrawUtils;
+import lib.GuiConstants;
+import lib.engine.Corners;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -9,21 +11,28 @@ import java.util.List;
 
 /** Contains segments and faces to draw. **/
 public class Shape {
-    /** All faces to draw. (Drawn first) **/
-    public final List<Face> faces;
-    /** All segments to draw. (Drawn second) **/
-    public final List<Segment> segments;
-    /** The same as segments, but drawn the same color as the face.
-     * Typically used to cover up segments below it from another face. (Drawn third) **/
-    public final List<Segment> culledSegments;
-    /** Sub-shapes to draw after this shape is drawn. **/
-    public final List<Shape> children;
+    /** All components to draw. **/
+    public final List<ShapeComponent> components;
+
+    /** Corner heights for this tile. **/
+    protected Corners corners;
+    /** Screen position of NW corner. **/
+    protected Point nw;
+    /** Screen position of SW corner. **/
+    protected Point sw;
+    /** Screen position of SE corner. **/
+    protected Point se;
+    /** Screen position of NE corner. **/
+    protected Point ne;
+    /** The zoom this shape is drawn at. **/
+    protected double zoom;
+    /** Color for segments to be drawn in. **/
+    protected Color segmentColor;
+    /** Color for faces to be drawn in. **/
+    protected Color faceColor;
 
     public Shape() {
-        this.faces = new ArrayList<>();
-        this.culledSegments = new ArrayList<>();
-        this.segments = new ArrayList<>();
-        this.children = new ArrayList<>();
+        components = new ArrayList<>();
     }
 
     /** Draw this shape at the given coordinates with the given color.
@@ -32,80 +41,58 @@ public class Shape {
      * @param segmentColor The color to draw segments on this shape.
      * @param faceColor The color to draw faces on this shape.
      */
-    public void draw(Graphics g, Polygon polygon, Color segmentColor, Color faceColor, double zoom){
-        // Initialize points array
-        Point[] points = new Point[polygon.npoints];
-        for (int i=0; i<points.length; i++){
-            points[i] = new Point(polygon.xpoints[i], polygon.ypoints[i]);
-        }
+    public void draw(Graphics g, Polygon polygon, Corners corners, Color segmentColor, Color faceColor, double zoom){
+        // Initialize shape properties
+        this.corners = corners;
+        nw = new Point(polygon.xpoints[0], polygon.ypoints[0]);
+        sw = new Point(polygon.xpoints[1], polygon.ypoints[1]);
+        se = new Point(polygon.xpoints[2], polygon.ypoints[2]);
+        ne = new Point(polygon.xpoints[3], polygon.ypoints[3]);
+        this.zoom = zoom;
+        this.segmentColor = segmentColor;
+        this.faceColor = faceColor;
 
-        // 1. draw faces
-        g.setColor(faceColor);
-        for (Face face : faces){
-            Polygon facePolygon = new Polygon();
-            for (Vertex v : face.vertices) {
-                Point pos = vertPos(points, v, zoom);
-                facePolygon.addPoint(pos.x, pos.y);
-            }
-            g.fillPolygon(facePolygon);
-        }
-
-        // 2. draw normal segments
-        g.setColor(segmentColor);
-        drawSegments(g, points, segments, zoom);
-
-        // 3. draw culled segments
-        g.setColor(faceColor);
-        drawSegments(g, points, culledSegments, zoom);
-
-        // 3. draw child shapes
-        for (Shape shape : children){
-            shape.draw(g, polygon, segmentColor, faceColor, zoom);
+        // Draw all components, in order
+        for (ShapeComponent component : components) {
+            component.draw(g, this);
         }
     }
 
-    private void drawSegments(Graphics g, Point[] points, List<Segment> segments, double zoom){
-        //NW, NE, SE, SW
-        for (Segment segment : segments){
-            Point start = vertPos(points, segment.start, zoom);
-            Point end = vertPos(points, segment.end, zoom);
-            g.drawLine(start.x, start.y, end.x, end.y);
-        }
-    }
-
-    /** Get the screen position of a vertex based on its base tile's polygon's points. **/
-    private Point vertPos(Point[] points, Vertex vertex, double zoom) {
-        Point nw = points[0], sw = points[1], se = points[2], ne = points[3];
-
+    public Point vertPos(Vertex v) {
         // Get the point on the base
-        Point wr = DrawUtils.lerp(nw, sw, vertex.x+0.5);
-        Point er = DrawUtils.lerp(ne, se, vertex.x+0.5);
-        Point p = DrawUtils.lerp(wr, er, vertex.y+0.5);
-        p.y += zoom * vertex.z * Camera.HEIGHT_Y_OFFSET;
 
-        return p;
+        Point wr = DrawUtils.lerp(nw, sw, v.x+0.5); // lerp between NW and SW for western side
+        Point er = DrawUtils.lerp(ne, se, v.x+0.5); // lerp between NE and SE for eastern side
+        Point point = DrawUtils.lerp(wr, er, v.y+0.5); // lerp between W and E for base position
+        point.y += zoom * v.z * Camera.HEIGHT_Y_OFFSET; // add height to y position
+
+//      Unused trigonometry-based unit angling code, semi-working but leaving out because units may clip adjacent walls if angled into them
+//        double rowAngle = Math.atan((corners.right() - corners.front()) * -Camera.DEPTH_Y_OFFSET);
+//        double colAngle = Math.atan((corners.left() - corners.front()) * -Camera.DEPTH_Y_OFFSET);
+//
+//        double rowX = -Math.sin( rowAngle );
+//        double rowY = Math.cos( rowAngle );
+//
+//        double colX = -Math.sin( colAngle );
+//        double colY = Math.cos( colAngle );
+//
+//        point.x += zoom * v.z * -Camera.HEIGHT_Y_OFFSET * ((rowX * Camera.rowXOffset) + (colX * Camera.colXOffset));
+//        point.y -= zoom * v.z * -Camera.HEIGHT_Y_OFFSET * ((rowY * Camera.rowYOffset) + (colY * Camera.colYOffset));
+
+        return point;
     }
 
-    public void addFace(Face face){
-        faces.add(face);
+   public void add(ShapeComponent component) {
+        components.add(component);
+   }
+   public void addFace(Vertex... vertices) {
+        add(new Face(vertices));
+   }
+    public void addSegment(Vertex start, Vertex end) {
+        add(new Segment(start, end));
     }
-    public void addFace(Vertex... vertices){
-        faces.add(new Face(vertices));
-    }
-    public void addCulledSegment(Segment segment){
-        culledSegments.add(segment);
-    }
-    public void addCulledSegment(Vertex start, Vertex end){
-        culledSegments.add(new Segment(start, end));
-    }
-    public void addSegment(Segment segment){
-        segments.add(segment);
-    }
-    public void addSegment(Vertex start, Vertex end){
-        segments.add(new Segment(start, end));
-    }
-    public void addChild(Shape child){
-        children.add(child);
+    public void addCulledSegment(Vertex start, Vertex end) {
+        add(new Segment(start, end, true));
     }
 
     // ==== Static method for creating a tile-shaped polygon (used for shop, nearly identical code can be found in tile's draw
@@ -207,10 +194,18 @@ public class Shape {
         Shape shape = new Shape();
 
         // Define vertices
+        Vertex nwl = new Vertex(x-width, y-length, z);
         Vertex nel = new Vertex(x+width, y-length, z);
         Vertex swl = new Vertex(x-width, y+length, z);
         Vertex sel = new Vertex(x+width, y+length, z);
-        Vertex top = new Vertex(x-width, y-length, z+height);
+        Vertex top = new Vertex(x, y, z+height);
+
+        // These five are only visible when rotating, draw first so that they are overlapped
+        shape.addSegment(swl, nwl);
+        shape.addSegment(nel, nwl);
+        shape.addFace(swl, nwl, top);
+        shape.addFace(nel, nwl, top);
+        shape.addSegment(nwl, top);
 
         // Add faces
         shape.addFace(swl, sel, top);
@@ -218,7 +213,7 @@ public class Shape {
 
         // Add segments
         shape.addSegment(swl, sel);
-        shape.addSegment(sel, nel);
+        shape.addSegment(nel, sel);
         shape.addSegment(swl, top);
         shape.addSegment(sel, top);
         shape.addSegment(nel, top);

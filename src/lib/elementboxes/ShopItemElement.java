@@ -50,9 +50,10 @@ public class ShopItemElement extends ElementBox {
         boolean canBuy = player.canBuy(item);
         item.getMesh().draw(g,
                 unitDrawPoly,
+                Corners.FLAT,
                 canBuy ? player.color : Color.GRAY,
                 canBuy ? player.faceColor : Color.BLACK,
-                WIDTH);
+                SHAPE_ZOOM);
         costText.draw(g);
     }
 
@@ -61,6 +62,4 @@ public class ShopItemElement extends ElementBox {
         super.resize(parent, offset);
         unitDrawPoly = Shape.tilePolygon(rect.x + rect.width/2, rect.y + rect.width/2 - 10, SHAPE_ZOOM);
     }
-
-
 }

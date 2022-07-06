@@ -10,13 +10,18 @@ import java.util.List;
 public class ElementBox {
     protected List<ElementBox> children;
 
+    /** If this element is enabled. If disabled, will not be drawn or offset other elements, it just won't exist **/
+    public boolean active = true;
     /** Rectangle enclosing this element. Contains X, Y, width and height of this element on the screen. **/
     public Rectangle rect;
     /** Extra space added outside the border of this element on all 4 sides. **/
     public int marginLeft, marginRight, marginTop, marginBottom;
     /** Extra space added inside the border of this element on all 4 sides. **/
     public int padLeft, padRight, padTop, padBottom;
-    /** If child element sof this element should fill all remaining space in a certain axis. **/
+    /** If this element should stretch to fit all children if it is too small.
+     * (Direction of stretch depends on displayType's direction.) **/
+    public boolean stretch;
+    /** If this element should fill all available space of its parent in a certain axis. **/
     public boolean fillX, fillY;
     /** If elements should be pushed as far as possible to the right or bottom. **/
     public boolean alignRight, alignBottom;
@@ -77,9 +82,9 @@ public class ElementBox {
         FLEX_ROW(true, true, true),
         FLEX_COLUMN(true, false, true);
 
-        boolean doOffset;
-        boolean isRow;
-        boolean flex;
+        final boolean doOffset;
+        final boolean isRow;
+        final boolean flex;
         DisplayType(boolean doOffset, boolean isRow, boolean flex) {
             this.doOffset = doOffset;
             this.isRow = isRow;
@@ -100,9 +105,11 @@ public class ElementBox {
     /** Draw this element on the screen.
      * When extended, drawBackground(), drawChildren() and drawBorder() can be separated. **/
     public void draw(Graphics g) {
-        drawBackground(g);
-        drawChildren(g);
-        drawBorder(g);
+        if (active) {
+            drawBackground(g);
+            drawChildren(g);
+            drawBorder(g);
+        }
     }
 
     /** Draw the background of this element.Typically called before children are drawn. **/
@@ -116,7 +123,7 @@ public class ElementBox {
     /** Draw all children of this element Typically called before border is drawn. **/
     public void drawChildren(Graphics g) {
         for (ElementBox child : children){
-            child.draw(g);
+            if (child.active) child.draw(g);
         }
     }
 
@@ -189,17 +196,21 @@ public class ElementBox {
 
         if (children.size() == 0) return;
         if (displayType.flex) {
-            int availableSpace = displayType.isRow ? parent.rect.width : parent.rect.height;
+            int availableSpace = displayType.isRow ? rect.width : rect.height;
+            int activeChildren = 0;
             for (ElementBox child : children){
+                if (!child.active) continue;
+                activeChildren++;
                 if (displayType.isRow){
                     availableSpace -= (child.marginLeft + child.padLeft + child.padRight + child.marginLeft);
                 } else {
                     availableSpace -= (child.marginTop + child.padTop + child.padBottom + child.marginBottom);
                 }
             }
-            int elementSize = availableSpace / children.size();
+            int elementSize = availableSpace / activeChildren;
             int totalSize = 0;
             for (ElementBox child : children) {
+                if (!child.active) continue;
                 if (displayType.isRow) {
                     child.rect.width = elementSize;
                 } else {
@@ -216,15 +227,28 @@ public class ElementBox {
         } else if (displayType.doOffset) {
             int totalSize = 0;
             for (ElementBox child : children){
+                if (!child.active) continue;
                 child.resize(this, totalSize);
                 totalSize += displayType.isRow
-                        ? child.marginLeft + child.rect.width + child.marginRight
-                        : child.marginTop + child.rect.height + child.marginBottom;
+                        ? child.totalWidth()
+                        : child.totalHeight();
+            }
+            if (stretch) {
+                if (displayType.isRow) {
+                    rect.width = totalSize;
+                } else {
+                    rect.height = totalSize;
+                }
             }
         } else {
-            for (ElementBox child : children){
-                child.resize(this, 0);
-            }
+            resizeChildren();
+        }
+    }
+
+    /** Resize all children of this element but not this element itself. **/
+    public void resizeChildren() {
+        for (ElementBox child : children){
+            child.resize(this, 0);
         }
     }
 
@@ -247,7 +271,7 @@ public class ElementBox {
     public void descHover() {
         mouseOver = true;
         for (ElementBox child : children) {
-            child.descHover();
+            if (child.active) child.descHover();
         }
     }
 
@@ -255,7 +279,7 @@ public class ElementBox {
     public void descUnhover() {
         mouseOver = false;
         for (ElementBox child : children) {
-            child.descUnhover();
+            if (child.active) child.descUnhover();
         }
     }
 
@@ -263,7 +287,7 @@ public class ElementBox {
     public void focus() {
         focused = true;
         for (ElementBox child : children) {
-            child.focus();
+            if (child.active) child.focus();
         }
     }
 
@@ -271,24 +295,27 @@ public class ElementBox {
     public void unfocus() {
         focused = false;
         for (ElementBox child : children) {
-            child.unfocus();
+            if (child.active) child.unfocus();
         }
     }
 
     /** Called when the mouse is over this element. To be called on element with mouseOverUndim = true. **/
     public void mouseOver() {
+        if (!active) return;
         mouseOver = true;
         undim();
     }
 
     /** Called when the mouse is off this element. To be called on element with mouseOverUndim = true. **/
     public void mouseOff() {
+        if (!active) return;
         mouseOver = false;
         dim();
     }
 
     /** Undim this element and all sub-elements. To be called if moused over. **/
     public void undim() {
+        if (!active) return;
         undimmed = true;
         for (ElementBox child : children) {
             child.undim();
@@ -297,6 +324,7 @@ public class ElementBox {
 
     /** Dim this element and all sub-elements. To be called if moused off. **/
     public void dim() {
+        if (!active) return;
         undimmed = false;
         for (ElementBox child : children) {
             child.dim();
@@ -390,10 +418,10 @@ public class ElementBox {
 
     // Info
     public int totalWidth(){
-        return marginLeft + padLeft + rect.width + padRight + marginRight;
+        return marginLeft + rect.width + marginRight;
     }
     public int totalHeight(){
-        return marginTop + padTop + rect.height + padBottom + marginBottom;
+        return marginTop + rect.height + marginBottom;
     }
     public int innerWidth(){
         return padLeft + rect.width + padRight;

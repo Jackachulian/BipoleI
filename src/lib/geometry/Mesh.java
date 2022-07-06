@@ -1,5 +1,7 @@
 package lib.geometry;
 
+import lib.engine.Corners;
+
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,9 +16,9 @@ public class Mesh {
     }
 
     /** Draw all shapes in this mesh according to the passed polygon base. **/
-    public void draw(Graphics g, Polygon polygon, Color segmentColor, Color faceColor, double zoom) {
+    public void draw(Graphics g, Polygon polygon, Corners corners, Color segmentColor, Color faceColor, double zoom) {
         for (Shape shape : shapes) {
-            shape.draw(g, polygon, segmentColor, faceColor, zoom);
+            shape.draw(g, polygon, corners, segmentColor, faceColor, zoom);
         }
     }
 

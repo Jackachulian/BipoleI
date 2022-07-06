@@ -11,6 +11,8 @@ import java.awt.*;
 public class Unit {
     /** The battle this unit is in. **/
     private final Battle battle;
+    /** The tile this unit is currently on. **/
+    private Tile tile;
     /** The type of unit this is. **/
     private final UnitData data;
     /** The player that owns and controls this unit. **/
@@ -25,8 +27,6 @@ public class Unit {
     private int hp;
     /** Amount of damage this unit deals when attacking. **/
     private int atk;
-    /** Amount damage is decreased by when attacked. **/
-    private int defense;
     /** Amount this fighter's act speed is increased by. 1 is 100%. **/
     private double speed = 1.0;
 
@@ -46,7 +46,7 @@ public class Unit {
 
         autoAct = data.isDefaultAutoAct();
 
-        int delay = (int)(data.delay / speed);
+        int delay = getDelay();
         actionTimer = new Timer(delay, e -> onReady());
         actionTimer.setRepeats(data.isMustAutoAct());
     }
@@ -62,12 +62,41 @@ public class Unit {
         }
     }
 
+    /** Get the total time it takes for this unit to become ready after acting. **/
+    public int getDelay() {
+        return (int)(data.delay / speed);
+    }
+
+    /** Get the amount of milliseconds until this unit is ready. **/
+    public int getCooldown() {
+        return Math.max((int) (actionStartTime + data.delay - System.currentTimeMillis()), 0);
+    }
+
+    /** The amount of points this tile is worth.
+     * Selling earns 1/2 value * (HP percentage + 25%).
+     * Defeating this tile earns 1/2 value. */
+    public int value() {
+        return data.value;
+    }
+
+    /** Points earned by selling this unit (1/2 * value * (HP% + 25%)). **/
+    public int sellValue() {
+        return (int)Math.ceil(0.5 * value() * (1.0 * hp / data.hp  + 0.5));
+    }
+
+    /** Points earned by defeating this unit (1/2 value). **/
+    public int defeatValue() {
+        return (int)Math.ceil(0.5 * value());
+    }
+
     /** Effect to run when acting.
      * @param actionIndex the index of the action in this unit's data's action list to use.
      * @return true if the action could be used and was used; false if not **/
     public boolean act(int actionIndex){
         if (!ready) return false;
-        if (data.getActions().get(actionIndex).act(this)) {
+        Action autoAction = data.getActions().get(actionIndex);
+        if (autoAction.usable(owner, tile)) {
+            autoAction.act(owner, tile);
             resetCooldown();
             return true;
         } else {
@@ -89,7 +118,7 @@ public class Unit {
 
     /** Draw this unit on the screen. **/
     public void draw(Graphics g, Tile tile){
-        data.getMesh().draw(g, tile.getPolygon(), tile.getColor(), tile.getFaceColor(), Camera.zoom);
+        data.getMesh().draw(g, tile.getPolygon(), tile.getBase(), tile.getColor(), tile.getFaceColor(), Camera.zoom);
     }
 
     /** Draw UI elements associated with this unit. **/
@@ -114,5 +143,21 @@ public class Unit {
 
     public Player getOwner() {
         return owner;
+    }
+
+    public int getHp() {
+        return hp;
+    }
+
+    public int getAtk() {
+        return atk;
+    }
+
+    public Tile getTile() {
+        return tile;
+    }
+
+    public void setTile(Tile tile) {
+        this.tile = tile;
     }
 }

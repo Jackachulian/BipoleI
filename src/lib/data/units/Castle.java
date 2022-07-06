@@ -5,22 +5,22 @@ import lib.engine.UnitData;
 import lib.geometry.Shape;
 
 public class Castle extends UnitData {
+    private static final double
+            SIZE = 0.7,
+            HEIGHT = 0.3,
+
+            TOWER_SIZE = 0.15,
+            TOWER_SPACING = (SIZE-TOWER_SIZE)/2,
+            TOWER_HEIGHT = 0.1,
+
+            CENTER_TOWER_SIZE = 0.2,
+            CENTER_TOWER_HEIGHT = 0.2,
+            CENTER_TOWER_TRIANGLE_HEIGHT = 0.25;
+
     public Castle() {
         super("Castle",500, 25, 0, 5000);
         setMustAutoAct(true);
         addAction(new GeneratePoint("Mine", 1));
-
-        final double
-                SIZE = 0.7,
-                HEIGHT = 0.3,
-
-                TOWER_SIZE = 0.15,
-                TOWER_SPACING = (SIZE-TOWER_SIZE)/2,
-                TOWER_HEIGHT = 0.1,
-
-                CENTER_TOWER_SIZE = 0.2,
-                CENTER_TOWER_HEIGHT = 0.2,
-                CENTER_TOWER_TRIANGLE_HEIGHT = 0.25;
 
         // Base
         addShape(Shape.rectangularPrism(SIZE, SIZE, HEIGHT));

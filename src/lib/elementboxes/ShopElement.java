@@ -1,7 +1,5 @@
 package lib.elementboxes;
 
-import lib.Colors;
-import lib.engine.Buyable;
 import lib.engine.Shop;
 
 import java.awt.*;
@@ -21,14 +19,12 @@ public class ShopElement extends ElementBox {
 
     public ShopElement(Shop shop) {
         this.shop = shop;
+        displayType = DisplayType.COLUMN;
         fillY = true;
         rect.width = WIDTH;
         alignRight = true;
-        setPadding(PADDING);
         padTop = TOP_PADDING;
-        setBorder(false);
         borderLeft = true;
-        displayType = DisplayType.COLUMN;
         updateShopItemChildren();
 
         hoverable = true;
@@ -46,6 +42,8 @@ public class ShopElement extends ElementBox {
             row.displayType = DisplayType.ROW;
             row.rect.height = ShopItemElement.HEIGHT + 2*ShopItemElement.MARGIN;
             row.fillX = true;
+            row.bg = false;
+            row.marginLeft = 4;
             row.setBorder(false);
             for (int c=0; c<COLS; c++){
                 if (r*COLS + c >= shop.getItems().size()) break;
@@ -131,7 +129,7 @@ public class ShopElement extends ElementBox {
     @Override
     public ElementBox onMove(int r, int c) {
         // LEFT
-        if (c == -1) {
+        if (r == -1) {
             if (selectedCol > 0) {
                 selectedCol -= 1;
             }
@@ -139,7 +137,7 @@ public class ShopElement extends ElementBox {
         }
 
         // RIGHT
-        else if (c == 1) {
+        else if (r == 1) {
             if (selectedCol < ShopElement.COLS && selectedRowElement().children.size() > selectedCol+1) {
                 selectedCol += 1;
             }
@@ -147,7 +145,7 @@ public class ShopElement extends ElementBox {
         }
 
         // UP
-        else if (r == -1) {
+        else if (c == -1) {
             if (selectedRow > 0) {
                 selectedRow -= 1;
             }

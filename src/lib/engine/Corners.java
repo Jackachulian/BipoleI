@@ -42,6 +42,6 @@ public class Corners {
     public void setSe(int value) { values[2] = value; }
     public void setSw(int value) { values[3] = value; }
 
-    private static final Corners FLAT = new Corners(0, 0, 0, 0);
+    public static final Corners FLAT = new Corners(0, 0, 0, 0);
     public static Corners flatCorners() {return FLAT;}
 }

@@ -31,7 +31,7 @@ public class Colors {
             PLACEMENT_FADE = new Color(191, 191, 191, 200),
             VALID = new Color(31, 191, 95, PARTIAL_DIM_ALPHA),
             VALID_FACE = new Color(7, 44, 23, PARTIAL_DIM_ALPHA),
-            INVALID = new Color(191, 31, 39, PARTIAL_DIM_ALPHA),
+            INVALID = new Color(160, 27, 34, PARTIAL_DIM_ALPHA),
             INVALID_FACE = new Color(47, 6, 9, PARTIAL_DIM_ALPHA);
 
     public static Color blendColors(Color base, Color blend, double percent){
