@@ -10,14 +10,11 @@ public class Sell extends Action {
         super("Sell");
     }
 
-    /** Should be visible if the tile is owned by the player and can be sold. **/
+    /** Should be usable if the ready unit is owned by the player and can be sold (Or not ready but auto acts). **/
     @Override
-    public boolean visible(Player player, Tile tile) {
-        return super.visible(player, tile) && tile.hasUnit() && tile.getUnit().getData().isSellable();
+    public boolean usable(Player player, Tile tile) {
+        return tile.hasUnit() && (tile.getUnit().isReady() || tile.getUnit().getData().isMustAutoAct()) && tile.getUnit().getData().isSellable();
     }
-
-    // (Sell can only be used if unit is ready. Mostly to prevent selling right before dying)
-    // previously it was can be sold whenever
 
     @Override
     public void act(Player player, Tile tile) {
@@ -26,7 +23,7 @@ public class Sell extends Action {
     }
 
     @Override
-    public String displayName(Tile tile) {
+    public String displayName(Player player, Tile tile) {
         return String.format("Sell (%d)", tile.getUnit().sellValue());
     }
 }

@@ -295,7 +295,10 @@ public class GamePanel extends ElementPanel {
     @Override
     public void mouseReleased(MouseEvent e) {
         super.mouseReleased(e);
-        if (cursorDragItem != null && buyBlueprintTile().getOwner() == player && !buyBlueprintTile().hasUnit()) {
+        if (cursorDragItem != null
+                && battle.withinBounds(buyRow, buyCol)
+                && buyBlueprintTile().getOwner() == player
+                && !buyBlueprintTile().hasUnit()) {
             buyItem(cursorDragItem.item, buyBlueprintTile());
         }
         cursorDragItem = null;
@@ -321,7 +324,7 @@ public class GamePanel extends ElementPanel {
      * Moves the cursor to the closest point where it will be inside these margins, if it is not already. **/
     public void moveCameraToCursor(){
         if (GuiConstants.CAMERA_FOLLOW_CURSOR) {
-            Point cursorPos = getScreenPos(cursorRow+0.5, cursorCol+0.5, battle.getTile(cursorRow, cursorCol).getDepth());
+            Point cursorPos = getScreenPos(cursorRow+0.5, cursorCol+0.5, battle.getTile(cursorRow, cursorCol).depth);
 
             int x = Camera.cameraX.intValue();
             int y = Camera.cameraY.intValue();
@@ -383,7 +386,7 @@ public class GamePanel extends ElementPanel {
         }
 
         hoveredTile.onCursorHover();
-        info.setTile(hoveredTile);
+        info.setTile(player, hoveredTile);
         moveCameraToCursor();
     }
 
@@ -497,14 +500,14 @@ public class GamePanel extends ElementPanel {
     public class RotateLeft extends AbstractAction {
         @Override
         public void actionPerformed(ActionEvent e) {
-            Camera.rotate(cursorRow+0.5, cursorCol+0.5, cursorTile().getDepth(), Math.toRadians(-90));
+            Camera.rotate(cursorRow+0.5, cursorCol+0.5, cursorTile().depth, Math.toRadians(-90));
         }
     }
 
     public class RotateRight extends AbstractAction {
         @Override
         public void actionPerformed(ActionEvent e) {
-            Camera.rotate(cursorRow+0.5, cursorCol+0.5, cursorTile().getDepth(), Math.toRadians(90));
+            Camera.rotate(cursorRow+0.5, cursorCol+0.5, cursorTile().depth, Math.toRadians(90));
         }
     }
 }

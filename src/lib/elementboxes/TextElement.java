@@ -51,7 +51,7 @@ public class TextElement extends ElementBox {
             if (textXAlign == Alignment.START) {
                 strX = rect.x;
             } else if (textXAlign == Alignment.END) {
-                strX = rect.y + rect.width - metrics.stringWidth(line);
+                strX = rect.x + rect.width - metrics.stringWidth(line);
             } else {
                 strX = rect.x + (rect.width - metrics.stringWidth(line)) / 2;
             }

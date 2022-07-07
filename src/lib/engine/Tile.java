@@ -34,9 +34,9 @@ public class Tile {
     };
 
     /** The type of tile this is. 0=flat, 1=north slope, 2=west slope, 3=south slope, 4=east slope. **/
-    private final int type;
+    public final int type;
     /** Depth of this tile. Base is 0. **/
-    private final int depth;
+    public final int depth;
     /** Corners of this tile's base (Not the corners surrounding it). Used for gameplay and drawing. **/
     private final Corners base;
     /** Corners of the next lowest tiles around this tile when connected to other tiles. **/
@@ -94,10 +94,12 @@ public class Tile {
     // ==== CONTESTING
     /** Contest this tile by a player. **/
     public void contest(Player contestor){
-        // Subtract points. If contestor does not have enough points, return
-        if (!contestor.subtractPoints(contestCost())) return;
+        if (!contestable(contestor)) return;
 
-        // Increment value by 1 and set the new contestor
+        // Subtract points from contestor
+        contestor.subtractPoints(contestCost());
+
+        // Increment value by 1 and set this tile's new contestor, restarting contest timer if already started
         contestValue += 1;
         this.contestor = contestor;
         contestStartTime = System.currentTimeMillis();
@@ -111,6 +113,8 @@ public class Tile {
 
     /** If the player can contest this tile. **/
     public boolean contestable(Player player) {
+        // If this tile is already claimed, cannot contest it
+        if (owner != null) return false;
         // If the player is already contesting this tile, return false
         if (contestor == player) return false;
         // If there is not an adjacent claimed tile in the battle, return false **/
@@ -133,6 +137,17 @@ public class Tile {
 
     public void placeUnit(UnitData unitType) {
         setUnit(new Unit(unitType, battle, owner));
+    }
+
+    /** Use the passed action as the passed player, using this tile. **/
+    public boolean act(Player player, Action action) {
+        if (action.usable(player, this)) {
+            action.act(player, this);
+            if (unit != null) unit.resetCooldown();
+            return true;
+        } else {
+            return false;
+        }
     }
 
     // ==== DISPLAYING
@@ -217,7 +232,7 @@ public class Tile {
         }
 
         // Northern and western border, always drawn
-        g.setColor(owner!=null ? getColor() : Color.WHITE);
+        g.setColor(getColor());
         g.drawLine(bx, by, lx, ly); // northern border
         g.drawLine(bx, by, rx, ry); // western border
 
@@ -264,6 +279,39 @@ public class Tile {
 //        g.fillRect(fx-2, fy-2, 4, 4);
     }
 
+    /** Draw this tile on the given polygon with flat corners and no depth. Used for InfoElement. **/
+    public void drawOnPolygon(Graphics g, Polygon polygon) {
+        // Fill base
+        g.setColor(isClaimed() ? owner.landColor : Color.BLACK);
+        g.fillPolygon(polygon);
+
+        // If being contested, draw moving diagonal lines
+        if (beingContested()) {
+            g.setColor(contestor.color);
+            double cycle = (double) (System.currentTimeMillis() % GuiConstants.CONTEST_SHIFT_PERIOD) / GuiConstants.CONTEST_SHIFT_PERIOD;
+            for (double i = GuiConstants.CONTESTED_STEP * cycle; i < 1; i += GuiConstants.CONTESTED_STEP*1.5) {
+                // NW-NE-SW triangle
+                g.drawLine(
+                        DrawUtils.lerp(polygon.xpoints[0], polygon.xpoints[1], i),
+                        DrawUtils.lerp(polygon.ypoints[0], polygon.ypoints[1], i),
+                        DrawUtils.lerp(polygon.xpoints[0], polygon.xpoints[3], i),
+                        DrawUtils.lerp(polygon.ypoints[0], polygon.ypoints[3], i)
+                );
+                // SE-NE-SW triangle (Lerp backwards so lines move same direction)
+                g.drawLine(
+                        DrawUtils.lerp(polygon.xpoints[1], polygon.xpoints[2], i),
+                        DrawUtils.lerp(polygon.ypoints[1], polygon.ypoints[2], i),
+                        DrawUtils.lerp(polygon.xpoints[3], polygon.xpoints[2], i),
+                        DrawUtils.lerp(polygon.ypoints[3], polygon.ypoints[2], i)
+                );
+            }
+        }
+
+        // Draw border
+        g.setColor(isClaimed() ? owner.color : Color.WHITE);
+        g.drawPolygon(polygon);
+    }
+
     /** Determine if a given position on the screen is within this tile on the screen with the given zoom (including side faces). **/
     public boolean containsPoint(int x, int y) {
         return polygon.contains(x, y) || leftFace.contains(x, y) || rightFace.contains(x, y);
@@ -305,7 +353,7 @@ public class Tile {
 
     /** Get the line color of this unit after factoring in brightness. **/
     public Color getColor(){
-        return brightenColor(owner.color, 1);
+        return owner!=null ? brightenColor(owner.color, 1) : Color.WHITE;
     }
 
     /** Get the face color of this unit after factoring in brightness. **/
@@ -346,6 +394,15 @@ public class Tile {
 
     public boolean beingContested() {return contestor != null;}
 
+    public Player getContestor() {
+        return contestor;
+    }
+
+    /** Get the amount of milliseconds until this tile is contested. **/
+    public int getContestCooldown() {
+        return Math.max((int) (contestStartTime + GameConstants.CAPTURE_TIME - System.currentTimeMillis()), 0);
+    }
+
     public boolean hasUnit() {return unit != null;}
 
     public boolean ownedBy(Player player) {
@@ -381,10 +438,6 @@ public class Tile {
         Unit tempUnit = unit;
         unit = null;
         return tempUnit;
-    }
-
-    public int getDepth() {
-        return depth;
     }
 
     public Corners getBase() {

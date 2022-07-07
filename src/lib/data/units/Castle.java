@@ -20,6 +20,8 @@ public class Castle extends UnitData {
     public Castle() {
         super("Castle",500, 25, 0, 5000);
         setMustAutoAct(true);
+        setSellable(false);
+        setMovable(false);
         addAction(new GeneratePoint("Mine", 1));
 
         // Base

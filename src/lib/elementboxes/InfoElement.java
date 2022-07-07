@@ -1,6 +1,9 @@
 package lib.elementboxes;
 
 import lib.Colors;
+import lib.data.Actions;
+import lib.engine.Action;
+import lib.engine.Player;
 import lib.engine.Tile;
 import lib.engine.Unit;
 
@@ -16,13 +19,15 @@ public class InfoElement extends ElementBox {
     /** The tile currently being displayed. **/
     public Tile tile;
 
-    /** Index of the currently selected item. **/
+    /** Index of the currently selected action. -1 means an item in the sell/move row is selected. **/
     public int index;
 
     /** ElementBox displaying the title of this element. **/
     TitleRow titleRow;
     /** ElementBox containing the HP, ATK and cooldown stats. **/
     StatRow statRow;
+    /** Element containing all action buttons. **/
+    ActionList actionList;
 
     StatElement hp;
     StatElement atk;
@@ -43,6 +48,9 @@ public class InfoElement extends ElementBox {
         statRow = new StatRow();
         addChild(statRow);
 
+        actionList = new ActionList();
+        addChild(actionList);
+
         hp = new StatElement("HP");
         statRow.addChild(hp);
         atk = new StatElement("ATK");
@@ -52,11 +60,25 @@ public class InfoElement extends ElementBox {
     }
 
     /** Display a tile and its properties on this element. **/
-    public void setTile(Tile tile) {
+    public void setTile(Player player, Tile tile) {
         this.tile = tile;
         titleRow.setTile(tile);
 
         statRow.active = tile.hasUnit();
+        index = tile.hasUnit() ? -1 : 0;
+
+        actionList.clear();
+        if (tile.hasUnit()) {
+            if (tile.getUnit().ownedBy(player)) {
+                actionList.addChild(new ActionFirstRow(player, tile));
+            }
+            for (Action action : tile.getUnit().getData().getActions()) {
+                actionList.addChild(new ActionElement(action, player, tile));
+            }
+        } else {
+            actionList.addChild(new ActionElement(Actions.CONTEST, player, tile));
+        }
+
         resize(root, 0);
     }
 

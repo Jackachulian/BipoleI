@@ -15,7 +15,7 @@ public class Unit {
     private Tile tile;
     /** The type of unit this is. **/
     private final UnitData data;
-    /** The player that owns and controls this unit. **/
+    /** The player that owns and controls this unit (not the tile it is on). **/
     private final Player owner;
 
     /** Timer before this unit can act again. **/
@@ -55,7 +55,7 @@ public class Unit {
     public void onReady(){
         ready = true;
         if (data.isMustAutoAct()){
-            act(0);
+            autoAct(0);
             ready = false;
             actionStartTime = System.currentTimeMillis();
             // timer repeats if this unit is auto acting, so the timer has already repeated, so no need to restart timer
@@ -89,19 +89,11 @@ public class Unit {
         return (int)Math.ceil(0.5 * value());
     }
 
-    /** Effect to run when acting.
+    /** Effect to run when auto acting.
      * @param actionIndex the index of the action in this unit's data's action list to use.
      * @return true if the action could be used and was used; false if not **/
-    public boolean act(int actionIndex){
-        if (!ready) return false;
-        Action autoAction = data.getActions().get(actionIndex);
-        if (autoAction.usable(owner, tile)) {
-            autoAction.act(owner, tile);
-            resetCooldown();
-            return true;
-        } else {
-            return false;
-        }
+    public boolean autoAct(int actionIndex){
+        return tile.act(owner, data.getActions().get(actionIndex));
     }
 
     /** Use up this fighter's action, restarting their action timer cooldown. **/
@@ -127,6 +119,10 @@ public class Unit {
         if (!ready){
             DrawUtils.drawBar(g, tile.center.x, tile.center.y + Camera.zoom*0.25, readinessPercent(), Colors.READINESS_COLOR);
         }
+    }
+
+    public boolean ownedBy(Player player) {
+        return owner == player;
     }
 
     public boolean isReady() {

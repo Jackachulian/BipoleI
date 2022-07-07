@@ -27,7 +27,11 @@ public class Contest extends Action {
     }
 
     @Override
-    public String displayName(Tile tile) {
-        return String.format("Contest (%d)", tile.contestCost());
+    public String displayName(Player player, Tile tile) {
+        if (tile.beingContested()) {
+            return String.format("Contesting - %.01fs (%d)", tile.getContestCooldown()/1000.0, tile.contestCost());
+        } else {
+            return String.format("Contest (%d)", tile.contestCost());
+        }
     }
 }

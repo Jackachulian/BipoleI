@@ -1,5 +1,6 @@
 package lib.engine;
 
+import lib.data.Actions;
 import lib.geometry.Mesh;
 import lib.geometry.Shape;
 
@@ -27,7 +28,9 @@ public abstract class UnitData implements Buyable {
     /** If this type of unit auto acts by default when placed. **/
     private boolean defaultAutoAct;
     /** If this unit can be sold. **/
-    private boolean sellable;
+    private boolean sellable = true;
+    /** If this unit can move. **/
+    private boolean movable = true;
 
     /** All actions that this type of unit can use as their action. **/
     private final ArrayList<Action> actions;
@@ -97,5 +100,13 @@ public abstract class UnitData implements Buyable {
 
     public void setSellable(boolean sellable) {
         this.sellable = sellable;
+    }
+
+    public boolean isMovable() {
+        return movable;
+    }
+
+    public void setMovable(boolean movable) {
+        this.movable = movable;
     }
 }
