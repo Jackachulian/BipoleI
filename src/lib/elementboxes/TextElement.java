@@ -82,10 +82,9 @@ public class TextElement extends ElementBox {
         if (!wrap || text == null) return;
 
         FontMetrics metrics = g.getFontMetrics(font);
-        ArrayList<String> lines = new ArrayList<>();
-        // Consolidate ALL words into one array
-        String[] words = String.join(" ", text).split("\\s+");
 
+        String[] words = String.join(" ", text).split("\\s+");
+        ArrayList<String> lines = new ArrayList<>();
         StringBuilder line = new StringBuilder();
         int lineWidth = 0;
         for (String word : words) {

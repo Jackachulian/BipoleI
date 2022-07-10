@@ -85,9 +85,11 @@ public class Tile {
         // These two Corners fields will be updated by the Battle's constructor shortly after this is created
         around = new Corners();
         lowest = new Corners();
+
         polygon = new Polygon();
         rightFace = new Polygon();
         leftFace = new Polygon();
+
         center = new Point();
     }
 
@@ -147,6 +149,16 @@ public class Tile {
             return true;
         } else {
             return false;
+        }
+    }
+
+    /** Take damage from another unit. If there is a unit here, it takes damage. If not, destroy this tile. **/
+    public void takeDamage(Tile attacker, int amount) {
+        if (hasUnit()) {
+            unit.takeDamage(attacker, amount);
+        } else {
+            attacker.owner.addPoints(unit.defeatValue());
+            owner = null;
         }
     }
 

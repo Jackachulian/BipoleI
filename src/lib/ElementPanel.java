@@ -109,11 +109,7 @@ public abstract class ElementPanel extends JPanel implements MouseInputListener,
         );
 
         // If the pressed element is already selected, interact with it
-        if (mouseElement.selected) {
-            onInteract();
-        }
-        // otherwise, select it and focus the highest focusable element
-        else {
+        if (!mouseElement.selected) {
             selectElement(mouseElement);
             focusElement(mouseElementExtremum(
                     focusedElement.rect.contains(e.getPoint()) ? focusedElement : root,
@@ -121,6 +117,7 @@ public abstract class ElementPanel extends JPanel implements MouseInputListener,
                     ElementBox::isFocusable
             ));
         }
+        onInteract();
     }
 
     @Override

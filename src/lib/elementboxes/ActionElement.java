@@ -28,7 +28,7 @@ public class ActionElement extends TextElement {
         hoverHighlight = true;
 
         fillX = true;
-        rect.height = 50;
+        rect.height = 42;
         setMargin(4);
         setBorder(true);
     }
@@ -37,6 +37,7 @@ public class ActionElement extends TextElement {
     public void draw(Graphics g) {
         active = action.visible(player, tile);
         undimmed = action.usable(player, tile);
+        selectable = undimmed;
         setText(action.displayName(player, tile));
         super.draw(g);
     }
@@ -44,5 +45,8 @@ public class ActionElement extends TextElement {
     @Override
     public void onInteract() {
         tile.act(player, action);
+        if (!action.usable(player, tile)) {
+            unselect();
+        }
     }
 }

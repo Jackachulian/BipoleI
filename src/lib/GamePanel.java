@@ -50,6 +50,17 @@ public class GamePanel extends ElementPanel {
     /** The current row and column the mesh blueprint is being displayed on, and where it will be placed when the mouse is released. **/
     int buyRow = -1, buyCol = -1;
 
+    /** The unit that is currently selected to move or attack. **/
+    private Unit selectedUnit;
+    /** The current unit control mode. **/
+    private ControlMode mode;
+    /** Enum for unit control modes. **/
+    public enum ControlMode {
+        SELECT,
+        MOVE,
+        ATTACK
+    }
+
     // ======== CONSTRUCTOR
     public GamePanel(Battle battle, Player player) {
         super(new RootElement(){
@@ -70,7 +81,7 @@ public class GamePanel extends ElementPanel {
         addElement(shop);
         pointCounter = new PointCounterElement();
         addElement(pointCounter);
-        info = new InfoElement(root);
+        info = new InfoElement(root, player);
         addElement(info);
 
         resizeElements();   // Sets the size of all elements to where they need to be
@@ -108,6 +119,7 @@ public class GamePanel extends ElementPanel {
         super.getActionMap().put("rotateRight", new RotateRight());
 
         // Find the castle and move the cursor there
+        mode = ControlMode.SELECT;
         cursorToCastle();
 
         // Set camera to display this panel
@@ -295,12 +307,23 @@ public class GamePanel extends ElementPanel {
     @Override
     public void mouseReleased(MouseEvent e) {
         super.mouseReleased(e);
-        if (cursorDragItem != null
+
+        // If the cursor is still over the ShopItemElement, buy the shop item for the cursor tile
+        if (cursorDragItem == selectedElement && selectedElement.rect.contains(e.getPoint())) {
+            buyItem(((ShopItemElement) selectedElement).item, cursorTile());
+        }
+
+        // otherwise, check if the cursor-dragged item can be placed at the buy blueprint location and try to place it there
+        else if (
+                cursorDragItem != null
                 && battle.withinBounds(buyRow, buyCol)
                 && buyBlueprintTile().getOwner() == player
-                && !buyBlueprintTile().hasUnit()) {
+                && !buyBlueprintTile().hasUnit()
+        ) {
             buyItem(cursorDragItem.item, buyBlueprintTile());
         }
+
+        // in any case, cursor drag item should be set to none after the mouse is released
         cursorDragItem = null;
     }
 
@@ -386,7 +409,7 @@ public class GamePanel extends ElementPanel {
         }
 
         hoveredTile.onCursorHover();
-        info.setTile(player, hoveredTile);
+        info.setTile(hoveredTile);
         moveCameraToCursor();
     }
 

@@ -10,10 +10,14 @@ public class Move extends Action {
         super("Move");
     }
 
-    /** Should be usable if the unit is movable, in addition to being owned by the player and being ready. **/
+    @Override
+    public boolean visible(Player player, Tile tile) {
+        return super.visible(player, tile) && tile.getUnit().getData().isMovable();
+    }
+
     @Override
     public boolean usable(Player player, Tile tile) {
-        return super.usable(player, tile) && tile.getUnit().getData().isMovable();
+        return super.usable(player, tile);
     }
 
     @Override

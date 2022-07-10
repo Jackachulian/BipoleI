@@ -10,10 +10,14 @@ public class Sell extends Action {
         super("Sell");
     }
 
-    /** Should be usable if the ready unit is owned by the player and can be sold (Or not ready but auto acts). **/
+    @Override
+    public boolean visible(Player player, Tile tile) {
+        return super.visible(player, tile) && tile.getUnit().getData().isSellable();
+    }
+
     @Override
     public boolean usable(Player player, Tile tile) {
-        return tile.hasUnit() && (tile.getUnit().isReady() || tile.getUnit().getData().isMustAutoAct()) && tile.getUnit().getData().isSellable();
+        return tile.hasUnit() && (tile.getUnit().isReady() || tile.getUnit().getData().isMustAutoAct());
     }
 
     @Override

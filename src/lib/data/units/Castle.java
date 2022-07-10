@@ -22,7 +22,7 @@ public class Castle extends UnitData {
         setMustAutoAct(true);
         setSellable(false);
         setMovable(false);
-        addAction(new GeneratePoint("Mine", 1));
+        setAction(new GeneratePoint("Mine", 1));
 
         // Base
         addShape(Shape.rectangularPrism(SIZE, SIZE, HEIGHT));

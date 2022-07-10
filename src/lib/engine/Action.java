@@ -4,9 +4,16 @@ package lib.engine;
 public abstract class Action {
     /** Display name of this action. **/
     private final String name;
+    /** If this action requires a target to be selected on the unit. **/
+    private final boolean requiresTarget;
+
+    public Action(String name, boolean requiresTarget) {
+        this.name = name;
+        this.requiresTarget = requiresTarget;
+    }
 
     public Action(String name) {
-        this.name = name;
+        this(name, false);
     }
 
     /** Returns true if this action should be visible to the given player.

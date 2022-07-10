@@ -32,8 +32,8 @@ public abstract class UnitData implements Buyable {
     /** If this unit can move. **/
     private boolean movable = true;
 
-    /** All actions that this type of unit can use as their action. **/
-    private final ArrayList<Action> actions;
+    /** The action this unit type uses when acting. Null for no action. **/
+    private Action action;
 
     /** The mesh of shapes to draw when drawing this unit. **/
     private final Mesh mesh;
@@ -44,7 +44,6 @@ public abstract class UnitData implements Buyable {
         this.hp = hp;
         this.atk = atk;
         this.delay = delay;
-        this.actions = new ArrayList<>();
         this.mesh = new Mesh();
     }
 
@@ -54,8 +53,8 @@ public abstract class UnitData implements Buyable {
     }
 
     /** Add an action that this type of unit can use. **/
-    public void addAction(Action action) {
-        actions.add(action);
+    public void setAction(Action action) {
+        this.action = action;
     }
 
     @Override
@@ -82,8 +81,12 @@ public abstract class UnitData implements Buyable {
         if (mustAutoAct) this.defaultAutoAct = true;
     }
 
-    public ArrayList<Action> getActions() {
-        return actions;
+    public Action getAction() {
+        return action;
+    }
+
+    public boolean hasAction() {
+        return action != null;
     }
 
     public boolean isDefaultAutoAct() {

@@ -207,6 +207,7 @@ public class ElementBox {
                     availableSpace -= (child.marginTop + child.padTop + child.padBottom + child.marginBottom);
                 }
             }
+            if (activeChildren == 0) return;
             int elementSize = availableSpace / activeChildren;
             int totalSize = 0;
             for (ElementBox child : children) {

@@ -36,6 +36,10 @@ public class Unit {
     /** If this unit is currently auto acting. (Configurable by the player, if this unit type is not mustAutoAct) **/
     private boolean autoAct;
 
+    /** The tile this unit is targeting for its action. If auto attacking this may be used.
+     * If manual, this is set before attacking by moving the cursor to attack a unit. **/
+    private Tile target;
+
     public Unit(UnitData data, Battle battle, Player owner) {
         this.data = data;
         this.battle = battle;
@@ -55,7 +59,7 @@ public class Unit {
     public void onReady(){
         ready = true;
         if (data.isMustAutoAct()){
-            autoAct(0);
+            autoAct();
             ready = false;
             actionStartTime = System.currentTimeMillis();
             // timer repeats if this unit is auto acting, so the timer has already repeated, so no need to restart timer
@@ -72,16 +76,14 @@ public class Unit {
         return Math.max((int) (actionStartTime + data.delay - System.currentTimeMillis()), 0);
     }
 
-    /** The amount of points this tile is worth.
-     * Selling earns 1/2 value * (HP percentage + 25%).
-     * Defeating this tile earns 1/2 value. */
+    /** The base amount of points this tile is worth. Increases when upgraded. **/
     public int value() {
         return data.value;
     }
 
-    /** Points earned by selling this unit (1/2 * value * (HP% + 25%)). **/
+    /** Points earned by selling this unit ((1/3 * value) * (HP% + 25%)). Rounded up. **/
     public int sellValue() {
-        return (int)Math.ceil(0.5 * value() * (1.0 * hp / data.hp  + 0.5));
+        return (int)Math.ceil((value() / 3.0) * (1.0 * hp / data.hp  + 0.25));
     }
 
     /** Points earned by defeating this unit (1/2 value). **/
@@ -90,10 +92,9 @@ public class Unit {
     }
 
     /** Effect to run when auto acting.
-     * @param actionIndex the index of the action in this unit's data's action list to use.
      * @return true if the action could be used and was used; false if not **/
-    public boolean autoAct(int actionIndex){
-        return tile.act(owner, data.getActions().get(actionIndex));
+    public boolean autoAct(){
+        return tile.act(owner, data.getAction());
     }
 
     /** Use up this fighter's action, restarting their action timer cooldown. **/
@@ -106,6 +107,23 @@ public class Unit {
     /** Get the percentage that this unit is ready. Used in displaying. **/
     public double readinessPercent(){
         return Math.min((double)(System.currentTimeMillis() - actionStartTime) / data.delay, 1.0);
+    }
+
+    /** Deal damage to another tile.
+     * If there is a unit, it is attacked and becomes unclaimed if unit is defeated.
+     * If not, destroy the tile. **/
+    public void dealDamage(Tile target, int amount) {
+        target.takeDamage(tile, amount);
+    }
+
+    /** Deal damage to the selected target. **/
+    public void dealDamage(int amount) {
+        dealDamage(target, amount);
+    }
+
+    /** Take damage from another unit. **/
+    public void takeDamage(Tile attacker, int amount) {
+
     }
 
     /** Draw this unit on the screen. **/
@@ -155,5 +173,13 @@ public class Unit {
 
     public void setTile(Tile tile) {
         this.tile = tile;
+    }
+
+    public Tile getTarget() {
+        return target;
+    }
+
+    public void setTarget(Tile target) {
+        this.target = target;
     }
 }

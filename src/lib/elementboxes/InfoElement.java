@@ -15,12 +15,15 @@ public class InfoElement extends ElementBox {
 
     /** The root that this InfoElement is on, needed for resizing. **/
     private final ElementBox root;
+    /** The player viewing this infoElement. **/
+    public final Player player;
 
     /** The tile currently being displayed. **/
     public Tile tile;
 
-    /** Index of the currently selected action. -1 means an item in the sell/move row is selected. **/
-    public int index;
+    /** Keeps track of the unit that was last displayed.
+     * If this changed, this element needs to be reset to show the right actions, etc */
+    private Unit lastDrawUnit;
 
     /** ElementBox displaying the title of this element. **/
     TitleRow titleRow;
@@ -33,8 +36,9 @@ public class InfoElement extends ElementBox {
     StatElement atk;
     StatElement cooldown;
 
-    public InfoElement(ElementBox root) {
+    public InfoElement(ElementBox root, Player player) {
         this.root = root;
+        this.player = player;
 
         rect.width = WIDTH;
         setBorder(true);
@@ -60,20 +64,32 @@ public class InfoElement extends ElementBox {
     }
 
     /** Display a tile and its properties on this element. **/
-    public void setTile(Player player, Tile tile) {
+    public void setTile(Tile tile) {
         this.tile = tile;
         titleRow.setTile(tile);
 
         statRow.active = tile.hasUnit();
-        index = tile.hasUnit() ? -1 : 0;
+        if (!statRow.active) statRow.rect.width = 0;
 
         actionList.clear();
         if (tile.hasUnit()) {
             if (tile.getUnit().ownedBy(player)) {
-                actionList.addChild(new ActionFirstRow(player, tile));
-            }
-            for (Action action : tile.getUnit().getData().getActions()) {
-                actionList.addChild(new ActionElement(action, player, tile));
+                if (Actions.SELL.visible(player, tile) || Actions.MOVE.visible(player, tile)) {
+                    ActionRow row = new ActionRow();
+                    actionList.addChild(row);
+
+                    ActionElement move = new ActionElement(Actions.MOVE, player, tile);
+                    move.fillX = false;
+                    row.addChild(move);
+
+                    ActionElement sell = new ActionElement(Actions.SELL, player, tile);
+                    sell.fillX = false;
+                    row.addChild(sell);
+                }
+
+                if (tile.getUnit().getData().hasAction()) {
+                    actionList.addChild(new ActionElement(tile.getUnit().getData().getAction(), player, tile));
+                }
             }
         } else {
             actionList.addChild(new ActionElement(Actions.CONTEST, player, tile));
@@ -84,6 +100,9 @@ public class InfoElement extends ElementBox {
 
     @Override
     public void draw(Graphics g) {
+        if (lastDrawUnit != tile.getUnit()) {
+            setTile(tile);
+        }
         super.draw(g);
         if (tile.hasUnit()) {
             hp.setValue(tile.getUnit().getHp()+"");
@@ -92,5 +111,6 @@ public class InfoElement extends ElementBox {
                     tile.getUnit().isReady() ? "Ready" : String.format("%.01fs", tile.getUnit().getCooldown()/1000.0)
             );
         }
+        lastDrawUnit = tile.getUnit();
     }
 }
